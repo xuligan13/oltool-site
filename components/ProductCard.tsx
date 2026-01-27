@@ -1,3 +1,5 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ShoppingBag } from "lucide-react"
@@ -14,11 +16,19 @@ interface ProductProps {
 }
 
 export function ProductCard({ name, description, retailPrice, wholesalePrice, sizes, imageUrl, isBestseller }: ProductProps) {
+  const handleOrderClick = () => {
+    // IMPORTANT: Replace 'your_telegram_username' with your actual Telegram username
+    const telegramUsername = "your_telegram_username"
+    const message = `Здравствуйте! Меня интересует товар: ${name}`
+    const telegramUrl = `https://t.me/${telegramUsername}?text=${encodeURIComponent(message)}`
+    window.open(telegramUrl, '_blank')
+  }
+
   return (
     <div className="bg-card rounded-3xl overflow-hidden shadow-lg border border-border/50 h-full flex flex-col">
       <div className="aspect-[4/3] bg-secondary relative flex items-center justify-center overflow-hidden">
         <Image
-          src={imageUrl}
+          src={imageUrl || 'https://via.placeholder.com/400x300?text=No+Image'}
           alt={name}
           fill
           className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -54,7 +64,10 @@ export function ProductCard({ name, description, retailPrice, wholesalePrice, si
             </div>
           </div>
         </div>
-        <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl py-6 text-lg">
+        <Button 
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl py-6 text-lg"
+          onClick={handleOrderClick}
+        >
           <ShoppingBag className="w-5 h-5 mr-2" />
           Заказать партию
         </Button>
