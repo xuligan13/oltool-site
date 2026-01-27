@@ -1,0 +1,7 @@
+#Creditinials
+password = 65OL98ka!1488
+login = OLTUOL_inc
+
+#API_keys
+NEXT_PUBLIC_SUPABASE_URL= sb_publishable_N9uAMhVGJ3E_bmR4NRVO0A_jylgvTuY
+NEXT_PUBLIC_SUPABASE_ANON_KEY= sb_secret_BsTi_51h4vJ-6CMZUVtnnQ_e8ASwpU6

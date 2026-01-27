@@ -1,29 +1,51 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { ProductCard } from "./ProductCard"
 import { SkeletonCard } from "./skeleton-card"
+import { supabase } from "@/lib/supabase"
 
-const products = [
-  {
-    name: "Воротник защитный на липучке (Классик)",
-    description: "Прозрачный пластик высокой прочности, легкая регулировка. Подходит для кошек и собак.",
-    retailPrice: "12.00",
-    wholesalePrice: "7.50",
-    sizes: ["XS", "S", "M", "L", "XL"],
-    imageUrl: "/placeholder.svg", // Placeholder image
-    isBestseller: true
-  },
-  {
-    name: "Воротник защитный (Пластик Плюс)",
-    description: "Усиленная фиксация для крупных пород. Устойчив к активным нагрузкам.",
-    retailPrice: "15.00",
-    wholesalePrice: "9.80",
-    sizes: ["L", "XL", "XXL"],
-    imageUrl: "/placeholder.svg", // Placeholder image
-    isBestseller: false
-  }
-]
+// Define the type for a product based on the database schema
+interface Product {
+  id: number
+  name: string
+  description: string
+  retail_price: string
+  wholesale_price: string
+  sizes: string[]
+  image_url: string
+  is_bestseller?: boolean
+}
 
 export function ProductShowcase() {
-  const isLoading = products.length === 0
+  const [products, setProducts] = useState<Product[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setIsLoading(true)
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('id', { ascending: true })
+
+        if (error) {
+          throw error
+        }
+        
+        setProducts(data || [])
+      } catch (err: any) {
+        console.error("Error fetching products:", err.message)
+        setError("Не удалось загрузить товары. Попробуйте обновить страницу.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchProducts()
+  }, [])
 
   return (
     <section className="bg-background py-16 sm:py-24" id="catalog">
@@ -40,9 +62,22 @@ export function ProductShowcase() {
               <SkeletonCard />
               <SkeletonCard />
             </>
+          ) : error ? (
+            <div className="md:col-span-2 text-center text-destructive bg-destructive/10 p-8 rounded-2xl border border-destructive/20">
+                <p className="text-lg font-medium">{error}</p>
+            </div>
           ) : (
-            products.map((product, index) => (
-              <ProductCard key={index} {...product} />
+            products.map((product) => (
+              <ProductCard 
+                key={product.id}
+                name={product.name}
+                description={product.description}
+                retailPrice={product.retail_price}
+                wholesalePrice={product.wholesale_price}
+                sizes={product.sizes}
+                imageUrl={product.image_url}
+                isBestseller={product.is_bestseller}
+              />
             ))
           )}
         </div>
