@@ -17,9 +17,8 @@ interface ProductProps {
 
 export function ProductCard({ name, description, retailPrice, wholesalePrice, sizes, imageUrl, isBestseller }: ProductProps) {
   const handleOrderClick = () => {
-    // IMPORTANT: Replace 'your_telegram_username' with your actual Telegram username
-    const telegramUsername = "your_telegram_username"
-    const message = `Здравствуйте! Меня интересует товар: ${name}`
+    const telegramUsername = "Trianon2020"
+    const message = `Здравствуйте! Меня интересует оптовый заказ воротников: ${name}.`
     const telegramUrl = `https://t.me/${telegramUsername}?text=${encodeURIComponent(message)}`
     window.open(telegramUrl, '_blank')
   }
