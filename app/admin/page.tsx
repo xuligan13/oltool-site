@@ -62,6 +62,10 @@ interface Product {
   sizes: string[]
   is_bestseller: boolean
   image_url: string | null
+  material: string
+  country: string
+  product_type: string
+  delivery_info: string
 }
 
 export default function AdminPage() {
@@ -154,7 +158,11 @@ export default function AdminPage() {
       wholesale_price: "",
       sizes: ["S", "M", "L"],
       is_bestseller: false,
-      image_url: null
+      image_url: null,
+      material: "Полипропилен",
+      country: "Беларусь",
+      product_type: "Защитный воротник",
+      delivery_info: "По всей Беларуси"
     })
     setIsDrawerOpen(true)
   }
@@ -224,6 +232,10 @@ export default function AdminPage() {
         sizes: selectedProduct.sizes,
         is_bestseller: selectedProduct.is_bestseller,
         image_url: selectedProduct.image_url,
+        material: selectedProduct.material,
+        country: selectedProduct.country,
+        product_type: selectedProduct.product_type,
+        delivery_info: selectedProduct.delivery_info,
       }
 
       if (selectedProduct.id === 0) {
@@ -630,6 +642,50 @@ export default function AdminPage() {
                     className="min-h-[140px] text-xl font-medium rounded-2xl border-2 border-slate-100 focus-visible:ring-primary/20 focus-visible:border-primary transition-all bg-slate-50/50 p-6"
                     placeholder="Укажите особенности товара..."
                   />
+                </div>
+
+                {/* NEW FIELDS: Specifications */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <Label htmlFor="material" className="text-lg font-black text-slate-700 ml-1 uppercase tracking-wider">Материал</Label>
+                    <Input 
+                      id="material" 
+                      value={selectedProduct.material}
+                      onChange={(e) => setSelectedProduct({...selectedProduct, material: e.target.value})}
+                      className="h-16 text-xl font-bold rounded-2xl border-2 border-slate-100 focus-visible:ring-primary/20 focus-visible:border-primary transition-all bg-slate-50/50"
+                      placeholder="Напр: Полипропилен"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <Label htmlFor="country" className="text-lg font-black text-slate-700 ml-1 uppercase tracking-wider">Страна</Label>
+                    <Input 
+                      id="country" 
+                      value={selectedProduct.country}
+                      onChange={(e) => setSelectedProduct({...selectedProduct, country: e.target.value})}
+                      className="h-16 text-xl font-bold rounded-2xl border-2 border-slate-100 focus-visible:ring-primary/20 focus-visible:border-primary transition-all bg-slate-50/50"
+                      placeholder="Напр: Беларусь"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <Label htmlFor="product_type" className="text-lg font-black text-slate-700 ml-1 uppercase tracking-wider">Тип товара</Label>
+                    <Input 
+                      id="product_type" 
+                      value={selectedProduct.product_type}
+                      onChange={(e) => setSelectedProduct({...selectedProduct, product_type: e.target.value})}
+                      className="h-16 text-xl font-bold rounded-2xl border-2 border-slate-100 focus-visible:ring-primary/20 focus-visible:border-primary transition-all bg-slate-50/50"
+                      placeholder="Напр: Защитный воротник"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <Label htmlFor="delivery_info" className="text-lg font-black text-slate-700 ml-1 uppercase tracking-wider">Инфо о доставке</Label>
+                    <Input 
+                      id="delivery_info" 
+                      value={selectedProduct.delivery_info}
+                      onChange={(e) => setSelectedProduct({...selectedProduct, delivery_info: e.target.value})}
+                      className="h-16 text-xl font-bold rounded-2xl border-2 border-slate-100 focus-visible:ring-primary/20 focus-visible:border-primary transition-all bg-slate-50/50"
+                      placeholder="Напр: По всей Беларуси"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

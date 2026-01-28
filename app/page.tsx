@@ -74,7 +74,7 @@ export default async function Home() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
               {popularProducts.map((product) => (
-                <div key={product.id} className="group relative">
+                <Link key={product.id} href={`/catalog/${product.id}`} className="group relative block">
                   <div className="relative aspect-square rounded-[2.5rem] overflow-hidden bg-slate-100 mb-6 shadow-xl shadow-slate-200/50 transition-all duration-500 group-hover:shadow-primary/20 group-hover:-translate-y-2">
                     {product.image_url ? (
                       <Image 
@@ -92,12 +92,12 @@ export default async function Home() {
                       <Badge className="bg-orange-500 text-white border-none px-4 py-1.5 text-xs font-black rounded-full uppercase tracking-wider shadow-lg">ХИТ</Badge>
                     </div>
                   </div>
-                  <h3 className="text-2xl font-black text-slate-900 mb-2 leading-none uppercase tracking-tight">{product.name}</h3>
+                  <h3 className="text-2xl font-black text-slate-900 mb-2 leading-none uppercase tracking-tight group-hover:text-primary transition-colors">{product.name}</h3>
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-black text-primary tracking-tighter">{product.retail_price}</span>
                     <span className="text-slate-400 font-bold text-sm uppercase tracking-widest">BYN</span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
