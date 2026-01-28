@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+import { Toaster } from "@/components/ui/sonner"
+import { CartTrigger } from "@/components/cart/CartTrigger"
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
@@ -36,6 +38,8 @@ export default function RootLayout({
     <html lang="ru">
       <body className={`${inter.className} antialiased`}>
         {children}
+        <CartTrigger />
+        <Toaster richColors position="top-center" />
         <Analytics />
       </body>
     </html>

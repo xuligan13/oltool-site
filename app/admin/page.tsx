@@ -24,6 +24,17 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { 
   Loader2, 
@@ -36,7 +47,8 @@ import {
   Package, 
   Flame,
   ChevronRight,
-  LogOut
+  LogOut,
+  Trash2
 } from "lucide-react"
 import { Toaster, toast } from "sonner"
 import Image from "next/image"
@@ -150,6 +162,22 @@ export default function AdminPage() {
   const handleEdit = (product: Product) => {
     setSelectedProduct({ ...product })
     setIsDrawerOpen(true)
+  }
+
+  const handleDelete = async (id: number) => {
+    try {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", id)
+
+      if (error) throw error
+      toast.success("Товар успешно удален")
+      fetchProducts()
+    } catch (error) {
+      console.error(error)
+      toast.error("Ошибка при удалении")
+    }
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -446,16 +474,48 @@ export default function AdminPage() {
                           )}
                         </TableCell>
                         <TableCell className="py-6 px-8 text-right">
-                          <Button 
-                            type="button"
-                            variant="default" 
-                            size="lg"
-                            className="h-14 px-8 rounded-2xl font-black text-lg shadow-xl hover:shadow-primary/30 transition-all hover:scale-[1.05] active:scale-[0.95]"
-                            onClick={() => handleEdit(product)}
-                          >
-                            ИЗМЕНИТЬ
-                            <ChevronRight className="ml-2 h-5 w-5" />
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              type="button"
+                              variant="default" 
+                              size="lg"
+                              className="h-14 px-8 rounded-2xl font-black text-lg shadow-xl hover:shadow-primary/30 transition-all hover:scale-[1.05] active:scale-[0.95]"
+                              onClick={() => handleEdit(product)}
+                            >
+                              ИЗМЕНИТЬ
+                              <ChevronRight className="ml-2 h-5 w-5" />
+                            </Button>
+
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  type="button"
+                                  variant="destructive" 
+                                  size="icon"
+                                  className="h-14 w-14 rounded-2xl shadow-xl hover:shadow-destructive/30 transition-all hover:scale-[1.05] active:scale-[0.95]"
+                                >
+                                  <Trash2 className="h-6 w-6" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="rounded-[2rem] border-none">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="text-2xl font-black text-slate-900">Вы уверены?</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-lg">
+                                    Это действие нельзя отменить. Товар "{product.name}" будет навсегда удален из базы данных.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="gap-2">
+                                  <AlertDialogCancel className="h-14 rounded-2xl font-bold border-2">Отмена</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    className="h-14 rounded-2xl font-black bg-destructive text-white hover:bg-destructive/90"
+                                    onClick={() => handleDelete(product.id)}
+                                  >
+                                    УДАЛИТЬ
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
