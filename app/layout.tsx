@@ -1,4 +1,3 @@
-import React from "react"
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
@@ -9,7 +8,6 @@ const inter = Inter({ subsets: ["latin", "cyrillic"] });
 export const metadata: Metadata = {
   title: 'ОЛТУОЛ — Ветеринарные защитные воротники оптом',
   description: 'Прямые поставки профессиональных ветеринарных защитных воротников для клиник по всей Беларуси. Оптовые цены, быстрая доставка.',
-  generator: 'v0.app',
   icons: {
     icon: [
       {

@@ -6,31 +6,25 @@ import { ShoppingBag } from "lucide-react"
 import Image from "next/image"
 
 interface ProductProps {
-  name: string
-  description: string
-  retailPrice: string
-  wholesalePrice: string
-  sizes: string[]
-  imageUrl: string
-  isBestseller?: boolean
+  name: string;
+  description: string;
+  retailPrice: string;
+  wholesalePrice: string;
+  imageUrl: string;
+  isBestseller?: boolean;
+  onSelectProduct: () => void;
 }
 
-export function ProductCard({ name, description, retailPrice, wholesalePrice, sizes, imageUrl, isBestseller }: ProductProps) {
-  const handleOrderClick = () => {
-    const telegramUsername = "Trianon2020"
-    const message = `Здравствуйте! Меня интересует оптовый заказ воротников: ${name}.`
-    const telegramUrl = `https://t.me/${telegramUsername}?text=${encodeURIComponent(message)}`
-    window.open(telegramUrl, '_blank')
-  }
-
+export function ProductCard({ name, description, retailPrice, wholesalePrice, imageUrl, isBestseller, onSelectProduct }: ProductProps) {
   return (
-    <div className="bg-card rounded-3xl overflow-hidden shadow-lg border border-border/50 h-full flex flex-col">
-      <div className="aspect-[4/3] bg-secondary relative flex items-center justify-center overflow-hidden">
-        <Image
-          src={imageUrl || 'https://via.placeholder.com/400x300?text=No+Image'}
+    <div className="bg-card rounded-3xl overflow-hidden shadow-lg border border-border/50 h-full flex flex-col transition-all duration-300 hover:shadow-xl hover:border-primary/20">
+      <div className="bg-secondary flex justify-center items-center">
+        <Image 
+          src={imageUrl || 'https://via.placeholder.com/400x300?text=No+Image'} 
           alt={name}
-          fill
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
+          width={400}
+          height={300}
+          className="object-cover"
         />
         {isBestseller && (
           <Badge className="absolute top-4 right-4 bg-accent text-accent-foreground rounded-xl px-3 py-1">
@@ -38,37 +32,32 @@ export function ProductCard({ name, description, retailPrice, wholesalePrice, si
           </Badge>
         )}
       </div>
-      <div className="p-6 sm:p-8 flex-grow">
+
+      <div className="p-6 sm:p-8 flex-grow flex flex-col">
         <h3 className="text-2xl font-bold text-foreground mb-2">{name}</h3>
         <p className="text-muted-foreground mb-6 leading-relaxed">{description}</p>
+        
+        <div className="flex-grow"></div>
+
         <div className="mb-6">
-          <span className="text-sm font-medium text-foreground mb-3 block">Размеры:</span>
-          <div className="flex flex-wrap gap-2">
-            {sizes.map((size) => (
-              <span key={size} className="px-3 py-1 bg-secondary text-foreground rounded-lg text-xs font-medium">
-                {size}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="bg-secondary rounded-2xl p-6 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <div>
-              <span className="text-sm text-muted-foreground block mb-1">Розничная цена</span>
-              <span className="text-lg text-muted-foreground line-through">{retailPrice} BYN</span>
-            </div>
-            <div className="text-right">
-              <span className="text-sm text-primary block mb-1 font-medium">Партнерский Опт</span>
+          <div className="flex items-end justify-between gap-4">
+            <div className="text-left">
+              <span className="text-sm text-muted-foreground block">Партнерский Опт</span>
               <span className="text-3xl font-bold text-primary">{wholesalePrice} BYN</span>
             </div>
+            <div className="text-right">
+              <span className="text-sm text-muted-foreground block">Розничная цена</span>
+              <span className="text-lg text-muted-foreground line-through">{retailPrice} BYN</span>
+            </div>
           </div>
         </div>
+
         <Button 
           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl py-6 text-lg"
-          onClick={handleOrderClick}
+          onClick={onSelectProduct}
         >
           <ShoppingBag className="w-5 h-5 mr-2" />
-          Заказать партию
+          Выбрать размеры
         </Button>
       </div>
     </div>

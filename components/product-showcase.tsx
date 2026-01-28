@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { ProductCard } from "./ProductCard"
 import { SkeletonCard } from "./skeleton-card"
 import { supabase } from "@/lib/supabase"
+import { OrderDrawer } from "./OrderDrawer"
 
 // Define the type for a product based on the database schema
 interface Product {
@@ -21,6 +22,9 @@ export function ProductShowcase() {
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -36,9 +40,13 @@ export function ProductShowcase() {
         }
         
         setProducts(data || [])
-      } catch (err: any) {
-        console.error("Error fetching products:", err.message)
-        setError("Не удалось загрузить товары. Попробуйте обновить страницу.")
+      } catch (err) {
+        let errorMessage = "Не удалось загрузить товары. Попробуйте обновить страницу.";
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        }
+        console.error("Error fetching products:", errorMessage);
+        setError(errorMessage);
       } finally {
         setIsLoading(false)
       }
@@ -47,41 +55,64 @@ export function ProductShowcase() {
     fetchProducts()
   }, [])
 
+  const handleSelectProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setIsDrawerOpen(true);
+  };
+  
+  const handleDrawerChange = (isOpen: boolean) => {
+    setIsDrawerOpen(isOpen);
+    if (!isOpen) {
+      // Give animation time to finish before clearing product
+      setTimeout(() => {
+        setSelectedProduct(null);
+      }, 300);
+    }
+  };
+
   return (
-    <section className="bg-background py-16 sm:py-24" id="catalog">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">Наш каталог</h2>
-          <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Прямые поставки от ОЛТУОЛ для ветеринарных клиник и аптек
-          </p>
+    <>
+      <section className="bg-background py-16 sm:py-24" id="catalog">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground">Наш каталог</h2>
+            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+              Прямые поставки от ОЛТУОЛ для ветеринарных клиник и аптек
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+            {isLoading ? (
+              <>
+                <SkeletonCard />
+                <SkeletonCard />
+              </>
+            ) : error ? (
+              <div className="md:col-span-2 text-center text-destructive bg-destructive/10 p-8 rounded-2xl border border-destructive/20">
+                  <p className="text-lg font-medium">{error}</p>
+              </div>
+            ) : (
+              products.map((product) => (
+                <ProductCard 
+                  key={product.id}
+                  name={product.name}
+                  description={product.description}
+                  retailPrice={product.retail_price}
+                  wholesalePrice={product.wholesale_price}
+                  imageUrl={product.image_url}
+                  isBestseller={product.is_bestseller}
+                  onSelectProduct={() => handleSelectProduct(product)}
+                />
+              ))
+            )}
+          </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-          {isLoading ? (
-            <>
-              <SkeletonCard />
-              <SkeletonCard />
-            </>
-          ) : error ? (
-            <div className="md:col-span-2 text-center text-destructive bg-destructive/10 p-8 rounded-2xl border border-destructive/20">
-                <p className="text-lg font-medium">{error}</p>
-            </div>
-          ) : (
-            products.map((product) => (
-              <ProductCard 
-                key={product.id}
-                name={product.name}
-                description={product.description}
-                retailPrice={product.retail_price}
-                wholesalePrice={product.wholesale_price}
-                sizes={product.sizes}
-                imageUrl={product.image_url}
-                isBestseller={product.is_bestseller}
-              />
-            ))
-          )}
-        </div>
-      </div>
-    </section>
+      </section>
+      
+      <OrderDrawer 
+        product={selectedProduct}
+        isOpen={isDrawerOpen}
+        onOpenChange={handleDrawerChange}
+      />
+    </>
   )
 }

@@ -123,3 +123,23 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom utility to hide number input spinners */
+.no-scrollbar::-webkit-inner-spin-button,
+.no-scrollbar::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-scrollbar {
+  -moz-appearance: textfield;
+}
+
+/* Custom animation for quantity updates */
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+.animate-pop {
+  animation: pop 0.3s ease-in-out;
+}
