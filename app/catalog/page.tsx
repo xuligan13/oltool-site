@@ -4,15 +4,23 @@ import { supabase } from "@/lib/supabase"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Flame, ImageIcon, Package, SearchX, Sparkles, FilterX, ChevronDown } from "lucide-react"
+import { ArrowLeft, Flame, ImageIcon, Package, FilterX, ChevronDown, Sparkles } from "lucide-react"
 import { AddToCart } from "@/components/cart/AddToCart"
 import { Search } from "@/components/Search"
 import { CategoryTabs } from "@/components/CategoryTabs"
+import { CatalogFilters } from "@/components/CatalogFilters"
 
-export const revalidate = 3600 // Revalidate every hour
+export const revalidate = 3600
 
 interface CatalogPageProps {
-  searchParams: Promise<{ q?: string; category?: string; limit?: string }>
+  searchParams: Promise<{ 
+    q?: string; 
+    category?: string; 
+    limit?: string;
+    minPrice?: string;
+    maxPrice?: string;
+    sort?: string;
+  }>
 }
 
 export default async function CatalogPage({ searchParams }: CatalogPageProps) {
@@ -20,15 +28,18 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const query = params.q || ""
   const category = params.category || "all"
   const limit = parseInt(params.limit || "12")
+  const minPrice = params.minPrice ? parseFloat(params.minPrice) : null
+  const maxPrice = params.maxPrice ? parseFloat(params.maxPrice) : null
+  const sort = params.sort || "popular"
 
-  // 1. Fetch Dynamic Categories from DB
+  // 1. Fetch Categories
   const { data: categoryData } = await supabase
     .from("products")
     .select("category")
   
   const uniqueCategories = Array.from(new Set(categoryData?.map(p => p.category).filter(Boolean))) as string[]
 
-  // 2. Build Main Query
+  // 2. Build Query
   let supabaseQuery = supabase
     .from("products")
     .select("*", { count: "exact" })
@@ -45,12 +56,31 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
     }
   }
 
-  // 3. Fetch Data with Limit
-  const { data: products, error, count } = await supabaseQuery
-    .order("is_hit", { ascending: false }) 
-    .order("is_bestseller", { ascending: false })
-    .order("name", { ascending: true })
-    .range(0, limit - 1)
+  if (minPrice !== null) {
+    // Note: prices are stored as text/varchar in your schema based on AdminPage interface
+    // but we compare them as numbers in the query if possible, or filter post-fetch
+    // Given Supabase limitations with casting text to numeric in simple filters, 
+    // we'll fetch and filter if needed, but let's try standard range filter first
+    supabaseQuery = supabaseQuery.gte("retail_price", minPrice.toString())
+  }
+  
+  if (maxPrice !== null) {
+    supabaseQuery = supabaseQuery.lte("retail_price", maxPrice.toString())
+  }
+
+  // 3. Apply Sorting
+  if (sort === "popular") {
+    supabaseQuery = supabaseQuery.order("views_count", { ascending: false })
+  } else if (sort === "price_asc") {
+    supabaseQuery = supabaseQuery.order("retail_price", { ascending: true })
+  } else if (sort === "price_desc") {
+    supabaseQuery = supabaseQuery.order("retail_price", { ascending: false })
+  } else if (sort === "newest") {
+    supabaseQuery = supabaseQuery.order("created_at", { ascending: false })
+  }
+
+  // Final range and execution
+  const { data: products, error, count } = await supabaseQuery.range(0, limit - 1)
 
   if (error) {
     console.error("Error fetching products:", error)
@@ -60,7 +90,6 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-20 font-sans">
-      {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center">
           <Link 
@@ -95,43 +124,46 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
           </div>
         </header>
 
-        {/* SEARCH & FILTERS */}
-        <div className="space-y-6">
-          <Search />
-          <CategoryTabs categories={uniqueCategories} />
+        <div className="space-y-10 mb-16">
+          <div className="space-y-6">
+            <Search />
+            <CategoryTabs categories={uniqueCategories} />
+          </div>
+          <CatalogFilters />
         </div>
 
         {!products || products.length === 0 ? (
-          <div className="text-center py-24 bg-white rounded-[3rem] shadow-xl shadow-slate-200/50 border-2 border-dashed border-slate-100 flex flex-col items-center justify-center p-8">
-            <div className="bg-slate-50 p-10 rounded-[2.5rem] mb-8 text-slate-300">
-              <FilterX className="h-20 w-20" />
+          <div className="text-center py-24 bg-white rounded-[3.5rem] shadow-xl shadow-slate-200/50 border-4 border-slate-50 flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in-95 duration-500">
+            <div className="bg-rose-50 p-12 rounded-[3rem] mb-8 text-rose-500">
+              <FilterX className="h-24 w-24" />
             </div>
-            <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight mb-4">Ничего не нашли</h2>
+            <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tight mb-4">Фимозов, такого нет</h2>
             <p className="text-slate-500 text-xl font-medium max-w-md mb-10">
-              По вашим параметрам товаров не обнаружено.
+              Попробуй другой поиск или сбрось фильтры, чтобы найти что-то реальное.
             </p>
-            <Button asChild variant="outline" className="h-16 px-10 rounded-2xl border-2 font-black text-lg">
-              <Link href="/catalog">СБРОСИТЬ ФИЛЬТРЫ</Link>
+            <Button asChild className="h-20 px-12 rounded-3xl font-black text-xl bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 transition-all">
+              <Link href="/catalog">СБРОСИТЬ ВСЁ</Link>
             </Button>
           </div>
         ) : (
           <div className="space-y-16">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 md:gap-10">
-              {products.map((product) => (
+              {products.map((product, index) => (
                 <Card 
                   key={product.id} 
-                  className="border-none shadow-sm hover:shadow-md transition-all duration-500 rounded-3xl overflow-hidden bg-white group flex flex-col h-full hover:-translate-y-1"
+                  className="border-none shadow-sm hover:shadow-xl transition-all duration-500 rounded-[2.5rem] overflow-hidden bg-white group flex flex-col h-full hover:-translate-y-2"
                 >
                   <Link href={`/catalog/${product.id}`} className="flex-grow flex flex-col group/link">
-                    {/* Image Section */}
-                    <div className="relative aspect-square overflow-hidden bg-slate-50/50 rounded-t-3xl">
+                    <div className="relative aspect-square overflow-hidden bg-slate-50/50 rounded-t-[2.5rem]">
                       {product.image_url ? (
                         <Image
                           src={product.image_url}
                           alt={product.name}
                           fill
+                          priority={index < 4} // LCP optimization
+                          loading={index < 4 ? undefined : "lazy"}
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                          className="object-cover transition-transform duration-700 group-hover/link:scale-105 group-hover/link:opacity-90"
+                          className="object-cover transition-transform duration-700 group-hover/link:scale-110"
                         />
                       ) : (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-200">
@@ -142,23 +174,22 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
                       
                       <div className="absolute top-6 left-6 flex flex-col gap-2">
                         {(product.is_hit || product.is_bestseller) && (
-                          <Badge className="bg-orange-500 hover:bg-orange-600 text-white border-none px-5 py-2 text-sm font-black rounded-full shadow-sm uppercase tracking-wider flex items-center gap-2 animate-in fade-in slide-in-from-left-4 duration-500">
+                          <Badge className="bg-orange-500 text-white border-none px-5 py-2 text-sm font-black rounded-full shadow-lg uppercase tracking-wider flex items-center gap-2 animate-in slide-in-from-left-4 duration-500">
                             <Flame className="h-4 w-4 fill-current" />
                             Хит
                           </Badge>
                         )}
                         {product.is_new && (
-                          <Badge className="bg-green-500 hover:bg-green-600 text-white border-none px-5 py-2 text-sm font-black rounded-full shadow-sm uppercase tracking-wider flex items-center gap-2 animate-in fade-in slide-in-from-left-4 duration-700">
+                          <Badge className="bg-green-500 text-white border-none px-5 py-2 text-sm font-black rounded-full shadow-lg uppercase tracking-wider flex items-center gap-2 animate-in slide-in-from-left-4 duration-700">
                             <Sparkles className="h-4 w-4 fill-current" />
-                            Новинка
+                            New
                           </Badge>
                         )}
                       </div>
                     </div>
 
-                    {/* Content Section */}
                     <CardHeader className="p-8 pb-4">
-                      <CardTitle className="text-2xl font-black text-slate-900 line-clamp-2 group-hover/link:text-primary transition-colors leading-tight">
+                      <CardTitle className="text-2xl font-black text-slate-900 line-clamp-2 group-hover/link:text-primary transition-colors leading-tight tracking-tight">
                         {product.name}
                       </CardTitle>
                     </CardHeader>
@@ -207,16 +238,15 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
               ))}
             </div>
 
-            {/* Pagination / Load More */}
             {hasMore && (
               <div className="flex justify-center pt-8">
                 <Button 
                   asChild
                   variant="outline" 
-                  className="h-20 px-12 rounded-[2rem] border-4 border-slate-100 font-black text-xl hover:bg-white hover:border-primary/20 hover:text-primary transition-all shadow-xl shadow-slate-200/50 group"
+                  className="h-20 px-12 rounded-[2.5rem] border-4 border-slate-100 font-black text-xl hover:bg-white hover:border-primary/20 hover:text-primary transition-all shadow-xl shadow-slate-200/50 group"
                 >
                   <Link href={`/catalog?${new URLSearchParams({ ...params, limit: (limit + 12).toString() }).toString()}`} scroll={false}>
-                    ПОКАЗАТЬ ЕЩЕ 12 ТОВАРОВ
+                    ЗАГРУЗИТЬ ЕЩЕ
                     <ChevronDown className="ml-3 h-6 w-6 group-hover:translate-y-1 transition-transform" />
                   </Link>
                 </Button>
@@ -226,7 +256,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         )}
       </main>
 
-      <footer className="mt-32 py-20 bg-slate-900 text-center relative overflow-hidden">
+      <footer className="mt-32 py-20 bg-slate-900 text-center relative overflow-hidden rounded-t-[4rem]">
         <div className="max-w-4xl mx-auto px-4 relative z-10">
           <h2 className="text-3xl font-black text-white mb-6 uppercase tracking-widest">ОЛТУОЛ — ВАШ НАДЕЖНЫЙ ПАРТНЕР</h2>
           <div className="w-24 h-2 bg-primary mx-auto rounded-full mb-8" />

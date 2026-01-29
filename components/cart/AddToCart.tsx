@@ -11,9 +11,10 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Minus, Plus, ShoppingCart } from "lucide-react"
+import { Minus, Plus, ShoppingCart, Check } from "lucide-react"
 import { useCartStore } from "@/store/cart"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 interface AddToCartProps {
   product: {
@@ -28,7 +29,11 @@ interface AddToCartProps {
 export function AddToCart({ product }: AddToCartProps) {
   const [selectedSizes, setSelectedSizes] = useState<{ [size: string]: number }>({})
   const [open, setOpen] = useState(false)
+  
   const addItem = useCartStore((state) => state.addItem)
+  const items = useCartStore((state) => state.items)
+  
+  const isInCart = items.some(item => item.id === product.id)
 
   const updateQty = (size: string, delta: number) => {
     setSelectedSizes((prev) => {
@@ -73,9 +78,19 @@ export function AddToCart({ product }: AddToCartProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full h-16 rounded-2xl font-black text-lg shadow-xl shadow-primary/10 hover:shadow-primary/30 transition-all active:scale-[0.97] bg-primary text-white">
-          <ShoppingCart className="mr-2 h-5 w-5" />
-          В ЗАКАЗ
+        <Button 
+          className={cn(
+            "w-full h-16 rounded-2xl font-black text-lg shadow-xl transition-all active:scale-[0.97]",
+            isInCart 
+              ? "bg-green-500 hover:bg-green-600 text-white shadow-green-100" 
+              : "bg-primary text-white shadow-primary/10 hover:shadow-primary/30"
+          )}
+        >
+          {isInCart ? (
+            <><Check className="mr-2 h-5 w-5" /> В КОРЗИНЕ</>
+          ) : (
+            <><ShoppingCart className="mr-2 h-5 w-5" /> В ЗАКАЗ</>
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-lg">
@@ -125,7 +140,7 @@ export function AddToCart({ product }: AddToCartProps) {
             onClick={handleAddToCart}
             className="w-full h-16 rounded-2xl font-black text-xl shadow-sm hover:shadow-md transition-all bg-primary text-white"
           >
-            ПОДТВЕРДИТЬ
+            {isInCart ? "ОБНОВИТЬ В КОРЗИНЕ" : "ПОДТВЕРДИТЬ"}
           </Button>
         </DialogFooter>
       </DialogContent>
