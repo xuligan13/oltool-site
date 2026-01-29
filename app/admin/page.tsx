@@ -57,7 +57,13 @@ import {
   LogOut,
   Trash2,
   Sparkles,
-  ShoppingBag
+  ShoppingBag,
+  DollarSign,
+  TrendingUp,
+  BarChart3,
+  Search as SearchIcon,
+  Eye,
+  AlertCircle
 } from "lucide-react"
 import { toast } from "sonner"
 import Image from "next/image"
@@ -79,6 +85,20 @@ interface Product {
   country: string
   product_type: string
   delivery_info: string
+  views_count: number
+}
+
+interface Order {
+  id: number
+  total_price: number
+  status: string
+  items: any[]
+}
+
+interface UserLog {
+  event_type: string
+  session_id: string
+  payload: any
 }
 
 export default function AdminPage() {
@@ -89,15 +109,67 @@ export default function AdminPage() {
   const [initialLoading, setInitialLoading] = useState(true)
 
   const [products, setProducts] = useState<Product[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
+  const [userLogs, setUserLogs] = useState<UserLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const totalProducts = products.length
-  const bestsellerCount = products.filter(p => p.is_bestseller || p.is_hit).length
+  // --- STATS CALCULATION ---
+  const totalRevenue = orders
+    .filter(o => o.status === 'completed')
+    .reduce((sum, o) => sum + Number(o.total_price || 0), 0)
+  
+  const totalOrdersCount = orders.length
+  const completedOrdersCount = orders.filter(o => o.status === 'completed').length
+  const avgOrderValue = completedOrdersCount > 0 ? totalRevenue / completedOrdersCount : 0
+  const totalProductsCount = products.length
+
+  // 🛡 UNIQUE STATS LOGIC
+  const viewLogs = userLogs.filter(log => log.event_type === "view")
+  
+  // Подсчет уникальных сессий на каждый товар
+  const uniqueViewsMap: Record<number, number> = {}
+  viewLogs.forEach(log => {
+    const pid = Number(log.payload?.product_id)
+    const sid = log.session_id
+    if (!pid || !sid) return
+    
+    // Используем Set или просто проверяем существование в рамках этого расчета
+    const key = `${pid}_${sid}`
+    if (!uniqueViewsMap[pid]) uniqueViewsMap[pid] = 0
+    // В реальной жизни лучше делать это на сервере, но для MVP считаем в памяти
+  })
+
+  // Более простая агрегация: считаем сколько уникальных session_id видели продукт
+  const getUniqueViews = (pid: number) => {
+    const sessions = new Set(viewLogs.filter(l => Number(l.payload?.product_id) === pid).map(l => l.session_id))
+    return sessions.size
+  }
+
+  const mostPopularProduct = [...products].sort((a, b) => getUniqueViews(b.id) - getUniqueViews(a.id))[0]
+  
+  const searchQueries = userLogs
+    .filter(log => log.event_type === "search")
+    .map(log => ({ query: log.payload?.query, session: log.session_id }))
+    .filter(l => l.query)
+  
+  // Уникальные поисковые запросы (один запрос от одной сессии считается один раз)
+  const uniqueSearches = Array.from(new Set(searchQueries.map(s => `${s.query.toLowerCase()}_${s.session}`)))
+    .map(s => s.split('_')[0])
+
+  const topSearch = uniqueSearches.length > 0 
+    ? Object.entries(uniqueSearches.reduce((acc: any, q) => {
+        acc[q] = (acc[q] || 0) + 1
+        return acc
+      }, {})).sort((a: any, b: any) => b[1] - a[1])[0][0]
+    : "Нет данных"
+  // -------------------------
 
   useEffect(() => {
     const checkSession = async () => {
@@ -110,19 +182,41 @@ export default function AdminPage() {
     checkSession()
   }, [])
 
-  const fetchProducts = async () => {
+  const fetchData = async () => {
     try {
       setIsLoading(true)
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .order("id", { ascending: true })
+      setFetchError(null)
 
-      if (error) throw error
-      setProducts(data || [])
-    } catch (error) {
-      console.error(error)
-      toast.error("Ошибка при загрузке товаров")
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        throw new Error("КРИТИЧЕСКАЯ ОШИБКА: NEXT_PUBLIC_SUPABASE_URL не найден")
+      }
+      
+      const [pRes, oRes] = await Promise.all([
+        supabase.from("products").select("*").order("id", { ascending: true }),
+        supabase.from("orders").select("*")
+      ])
+
+      if (pRes.error) throw pRes.error
+      if (oRes.error) throw oRes.error
+
+      setProducts(pRes.data || [])
+      setOrders(oRes.data || [])
+
+      try {
+        const { data: logsData, error: logsError } = await supabase
+          .from("user_logs")
+          .select("*")
+          .order('created_at', { ascending: false })
+          .limit(2000)
+        
+        if (!logsError) {
+          setUserLogs(logsData || [])
+        }
+      } catch (e) {}
+
+    } catch (error: any) {
+      setFetchError(error.message || "Ошибка загрузки данных")
+      toast.error("Ошибка базы данных")
     } finally {
       setIsLoading(false)
     }
@@ -130,7 +224,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (isAuth) {
-      fetchProducts()
+      fetchData()
     }
   }, [isAuth])
 
@@ -171,7 +265,8 @@ export default function AdminPage() {
       material: "Полипропилен",
       country: "Беларусь",
       product_type: "Защитный воротник",
-      delivery_info: "По всей Беларуси"
+      delivery_info: "По всей Беларуси",
+      views_count: 0
     })
     setIsDrawerOpen(true)
   }
@@ -190,7 +285,7 @@ export default function AdminPage() {
 
       if (error) throw error
       toast.success("Товар успешно удален")
-      fetchProducts()
+      fetchData()
     } catch (error) {
       console.error(error)
       toast.error("Ошибка при удалении")
@@ -365,23 +460,38 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 lg:p-12">
+    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 lg:p-12 pb-24">
       <div className="max-w-7xl mx-auto space-y-10">
+        
+        {/* CRITICAL: Error Display */}
+        {fetchError && (
+          <div className="bg-destructive/10 border-2 border-destructive/20 p-6 rounded-3xl flex items-center gap-4 text-destructive animate-pulse">
+            <AlertCircle className="h-8 w-8" />
+            <div className="flex-grow">
+              <h4 className="font-black uppercase tracking-widest text-sm">Ошибка базы данных</h4>
+              <p className="font-bold text-lg">{fetchError}</p>
+            </div>
+            <Button onClick={fetchData} variant="outline" className="border-destructive/30 hover:bg-destructive hover:text-white transition-all rounded-2xl font-black">
+              ПОВТОРИТЬ
+            </Button>
+          </div>
+        )}
+
+        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-1">
-            <h1 className="text-5xl font-black tracking-tighter text-slate-900">УПРАВЛЕНИЕ</h1>
-            <p className="text-slate-500 text-xl font-medium">Ветеринарные воротники ОЛТУОЛ</p>
+            <h1 className="text-5xl font-black tracking-tighter text-slate-900">DASHBOARD</h1>
+            <p className="text-slate-500 text-xl font-medium">Аналитика и управление бизнесом</p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4">
             <Button asChild variant="outline" size="lg" className="h-14 px-8 rounded-2xl font-black text-lg border-2 border-primary/20 text-primary hover:bg-primary/5 transition-all">
               <Link href="/admin/orders" className="flex items-center gap-2">
                 <ShoppingBag className="h-5 w-5" /> ЗАКАЗЫ
               </Link>
             </Button>
-            {/* FEATURE: Add Product Button */}
             <Button 
               type="button"
-              className="bg-green-600 hover:bg-green-700 h-14 px-8 rounded-2xl font-black text-lg shadow-xl shadow-green-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="bg-green-600 hover:bg-green-700 h-14 px-8 rounded-2xl font-black text-lg shadow-sm hover:shadow-md transition-all"
               onClick={handleAddNew}
             >
               <Plus className="mr-2 h-6 w-6" /> ДОБАВИТЬ ТОВАР
@@ -390,7 +500,7 @@ export default function AdminPage() {
               type="button"
               variant="ghost" 
               size="lg" 
-              className="text-slate-400 hover:text-destructive font-bold text-lg h-14 px-8 rounded-2xl border-2 border-transparent hover:border-destructive/10"
+              className="text-slate-400 hover:text-destructive font-bold text-lg h-14 px-8 rounded-2xl border-2 border-transparent hover:border-destructive/10 transition-all"
               onClick={handleLogout}
             >
               <LogOut className="mr-2 h-5 w-5" /> Выйти
@@ -398,144 +508,211 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {/* 📊 Analytics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="border-none shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-white group transition-all duration-300">
             <CardContent className="p-8 flex items-center gap-6">
-              <div className="bg-primary/10 p-5 rounded-2xl group-hover:bg-primary group-hover:text-white transition-colors">
-                <Package className="h-10 w-10" />
+              <div className="bg-green-100 text-green-600 p-5 rounded-2xl group-hover:bg-green-600 group-hover:text-white transition-colors">
+                <DollarSign className="h-10 w-10" />
               </div>
               <div>
-                <p className="text-slate-500 font-bold text-lg uppercase tracking-wider">Всего товаров</p>
-                <h3 className="text-5xl font-black text-slate-900 leading-none mt-1">{totalProducts}</h3>
+                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Выручка</p>
+                <h3 className="text-3xl font-black text-slate-900 leading-none mt-1">{totalRevenue.toFixed(2)} <small className="text-sm font-bold text-slate-400">BYN</small></h3>
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="border-none shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-white group transition-all duration-300">
             <CardContent className="p-8 flex items-center gap-6">
-              <div className="bg-orange-100 text-orange-600 p-5 rounded-2xl group-hover:bg-orange-500 group-hover:text-white transition-colors">
-                <Flame className="h-10 w-10" />
+              <div className="bg-blue-100 text-blue-600 p-5 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                <ShoppingBag className="h-10 w-10" />
               </div>
               <div>
-                <p className="text-slate-500 font-bold text-lg uppercase tracking-wider">Хиты и новинки</p>
-                <h3 className="text-5xl font-black text-slate-900 leading-none mt-1">{bestsellerCount}</h3>
+                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Заказов</p>
+                <h3 className="text-3xl font-black text-slate-900 leading-none mt-1">{totalOrdersCount}</h3>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-white group transition-all duration-300">
+            <CardContent className="p-8 flex items-center gap-6">
+              <div className="bg-purple-100 text-purple-600 p-5 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                <TrendingUp className="h-10 w-10" />
+              </div>
+              <div>
+                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Средний чек</p>
+                <h3 className="text-3xl font-black text-slate-900 leading-none mt-1">{avgOrderValue.toFixed(2)} <small className="text-sm font-bold text-slate-400">BYN</small></h3>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-white group transition-all duration-300">
+            <CardContent className="p-8 flex items-center gap-6">
+              <div className="bg-orange-100 text-orange-600 p-5 rounded-2xl group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                <Package className="h-10 w-10" />
+              </div>
+              <div>
+                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Товаров</p>
+                <h3 className="text-3xl font-black text-slate-900 leading-none mt-1">{totalProductsCount}</h3>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white transition-all">
-          <CardHeader className="p-8 border-b border-slate-50">
-            <div className="flex items-center justify-between">
+        {/* 🕵️‍♂️ "1984" Surveillance Cards - UNIQUE VIEWS */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="border-none shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-white group transition-all duration-300">
+            <CardContent className="p-8 flex items-center gap-6">
+              <div className="bg-slate-100 text-slate-600 p-5 rounded-2xl group-hover:bg-slate-900 group-hover:text-white transition-colors">
+                <SearchIcon className="h-10 w-10" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Топ поиска (уник.)</p>
+                <h3 className="text-2xl font-black text-slate-900 leading-tight mt-1 truncate">«{topSearch}»</h3>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-white group transition-all duration-300">
+            <CardContent className="p-8 flex items-center gap-6">
+              <div className="bg-rose-100 text-rose-600 p-5 rounded-2xl group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                <Eye className="h-10 w-10" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Лидер внимания (уник.)</p>
+                <h3 className="text-2xl font-black text-slate-900 leading-tight mt-1 truncate">
+                  {mostPopularProduct?.name || "Нет данных"} 
+                  {mostPopularProduct && <small className="text-sm font-bold text-slate-400 ml-2">({getUniqueViews(mostPopularProduct.id)} чел.)</small>}
+                </h3>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* 📈 List Container */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          <Card className="lg:col-span-3 border-none shadow-sm rounded-3xl overflow-hidden bg-white transition-all">
+            <CardHeader className="p-8 border-b border-slate-50 flex flex-row items-center justify-between">
               <CardTitle className="text-2xl font-black text-slate-800 flex items-center gap-3">
                 <div className="w-2 h-8 bg-primary rounded-full" />
                 СПИСОК ТОВАРОВ
               </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-none">
-                    <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest">Товар</TableHead>
-                    <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest">Опт. цена</TableHead>
-                    <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest">Розн. цена</TableHead>
-                    <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest text-center">Статус</TableHead>
-                    <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest text-right">Действие</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-64 text-center">
-                        <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary opacity-20" />
-                        <p className="mt-4 text-slate-400 font-bold uppercase tracking-widest">Загружаем базу...</p>
-                      </TableCell>
+              <div className="bg-slate-50 px-4 py-2 rounded-xl text-sm font-bold text-slate-400 flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" /> Аналитика за все время
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-none">
+                      <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest">Товар</TableHead>
+                      <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest text-center">Просмотры (Уник.)</TableHead>
+                      <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest">Опт. цена</TableHead>
+                      <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest">Розница</TableHead>
+                      <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest text-center">Статус</TableHead>
+                      <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest text-right">Действие</TableHead>
                     </TableRow>
-                  ) : products.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-64 text-center">
-                        <p className="text-slate-400 font-bold text-xl uppercase tracking-widest">Товары не найдены</p>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    products.map((product) => (
-                      <TableRow key={product.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-50 group">
-                        <TableCell className="py-6 px-8">
-                          <div className="flex items-center gap-5">
-                            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex-shrink-0 relative overflow-hidden border-2 border-slate-50">
-                              {product.image_url ? (
-                                <Image src={product.image_url} alt={product.name} fill className="object-cover" />
-                              ) : (
-                                <ImageIcon className="m-auto h-8 w-8 text-slate-300" />
-                              )}
-                            </div>
-                            <span className="font-black text-xl text-slate-800 group-hover:text-primary transition-colors">{product.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-6 px-8">
-                          <span className="font-bold text-xl text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">{product.wholesale_price} <small className="text-xs ml-0.5">BYN</small></span>
-                        </TableCell>
-                        <TableCell className="py-6 px-8">
-                          <span className="font-black text-xl text-slate-900">{product.retail_price} <small className="text-xs ml-0.5">BYN</small></span>
-                        </TableCell>
-                        <TableCell className="py-6 px-8 text-center">
-                          <div className="flex flex-col gap-1 items-center">
-                            {(product.is_hit || product.is_bestseller) && (
-                              <Badge className="bg-orange-500 text-white border-none px-3 py-0.5 text-[10px] font-black rounded-full uppercase">ХИТ</Badge>
-                            )}
-                            {product.is_new && (
-                              <Badge className="bg-green-500 text-white border-none px-3 py-0.5 text-[10px] font-black rounded-full uppercase">NEW</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-6 px-8 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button 
-                              type="button"
-                              variant="default" 
-                              size="lg"
-                              className="h-14 px-8 rounded-2xl font-black text-lg shadow-sm hover:shadow-md transition-all"
-                              onClick={() => handleEdit(product)}
-                            >
-                              ИЗМЕНИТЬ
-                            </Button>
-
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button type="button" variant="destructive" size="icon" className="h-14 w-14 rounded-2xl shadow-sm hover:shadow-md transition-all">
-                                  <Trash2 className="h-6 w-6" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent className="rounded-3xl border-none shadow-lg">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle className="text-2xl font-black text-slate-900">Вы уверены?</AlertDialogTitle>
-                                  <AlertDialogDescription className="text-lg text-slate-500">
-                                    Товар "{product.name}" будет навсегда удален.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter className="gap-2 pt-4">
-                                  <AlertDialogCancel className="h-14 rounded-2xl font-bold border-2">Отмена</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    className="h-14 rounded-2xl font-black bg-destructive text-white hover:bg-destructive/90 transition-all"
-                                    onClick={() => handleDelete(product.id)}
-                                  >
-                                    УДАЛИТЬ
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-64 text-center">
+                          <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary opacity-20" />
+                          <p className="mt-4 text-slate-400 font-bold uppercase tracking-widest">Загружаем базу...</p>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                    ) : products.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-64 text-center">
+                          <p className="text-slate-400 font-bold text-xl uppercase tracking-widest">Товары не найдены</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      products.map((product) => (
+                        <TableRow key={product.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-50 group">
+                          <TableCell className="py-6 px-8">
+                            <div className="flex items-center gap-5">
+                              <div className="w-16 h-16 rounded-2xl bg-slate-100 flex-shrink-0 relative overflow-hidden border-2 border-slate-50">
+                                {product.image_url ? (
+                                  <Image src={product.image_url} alt={product.name} fill className="object-cover" />
+                                ) : (
+                                  <ImageIcon className="m-auto h-8 w-8 text-slate-300" />
+                                )}
+                              </div>
+                              <span className="font-black text-xl text-slate-800 group-hover:text-primary transition-colors">{product.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-6 px-8 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <Eye className="h-4 w-4 text-slate-300" />
+                              <span className="font-black text-slate-900">{getUniqueViews(product.id)}</span>
+                              <small className="text-[10px] text-slate-400 font-bold ml-1">/ {product.views_count || 0}</small>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-6 px-8">
+                            <span className="font-bold text-xl text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">{product.wholesale_price} <small className="text-xs ml-0.5">BYN</small></span>
+                          </TableCell>
+                          <TableCell className="py-6 px-8">
+                            <span className="font-black text-xl text-slate-900">{product.retail_price} <small className="text-xs ml-0.5">BYN</small></span>
+                          </TableCell>
+                          <TableCell className="py-6 px-8 text-center">
+                            <div className="flex flex-col gap-1 items-center">
+                              {(product.is_hit || product.is_bestseller) && (
+                                <Badge className="bg-orange-500 text-white border-none px-3 py-0.5 text-[10px] font-black rounded-full uppercase shadow-sm">ХИТ</Badge>
+                              )}
+                              {product.is_new && (
+                                <Badge className="bg-green-500 text-white border-none px-3 py-0.5 text-[10px] font-black rounded-full uppercase shadow-sm">NEW</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-6 px-8 text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button 
+                                type="button"
+                                variant="default" 
+                                size="lg"
+                                className="h-14 px-8 rounded-2xl font-black text-lg shadow-sm hover:shadow-md transition-all"
+                                onClick={() => handleEdit(product)}
+                              >
+                                ИЗМЕНИТЬ
+                              </Button>
+
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button type="button" variant="destructive" size="icon" className="h-14 w-14 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                                    <Trash2 className="h-6 w-6" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="rounded-3xl border-none shadow-lg">
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle className="text-2xl font-black text-slate-900">Вы уверены?</AlertDialogTitle>
+                                    <AlertDialogDescription className="text-lg text-slate-500">
+                                      Товар "{product.name}" будет навсегда удален.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter className="gap-2 pt-4">
+                                    <AlertDialogCancel className="h-14 rounded-2xl font-bold border-2">Отмена</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      className="h-14 rounded-2xl font-black bg-destructive text-white hover:bg-destructive/90 transition-all"
+                                      onClick={() => handleDelete(product.id)}
+                                    >
+                                      УДАЛИТЬ
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>

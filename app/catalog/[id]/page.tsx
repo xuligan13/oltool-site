@@ -29,6 +29,8 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params
+  
+  // 🕵️‍♂️ "1984" tracking: Fetch and increment views in one go (simplified)
   const { data: product } = await supabase
     .from("products")
     .select("*")
@@ -38,6 +40,19 @@ export default async function ProductPage({ params }: ProductPageProps) {
   if (!product) {
     notFound()
   }
+
+  // Fire and forget view update (Increment views_count)
+  supabase
+    .from("products")
+    .update({ views_count: (product.views_count || 0) + 1 })
+    .eq("id", id)
+    .then()
+
+  // Log to user_logs
+  supabase
+    .from("user_logs")
+    .insert([{ event_type: "view", payload: { product_id: id, product_name: product.name, source: "direct_link" } }])
+    .then()
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-20">
