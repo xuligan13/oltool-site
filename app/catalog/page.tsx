@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Flame, ImageIcon, Package, FilterX, ChevronDown, Sparkles } from "lucide-react"
+import { ArrowLeft, Flame, ImageIcon, Package, FilterX, ChevronDown, Sparkles, X } from "lucide-react"
 import { AddToCart } from "@/components/cart/AddToCart"
 import { Search } from "@/components/Search"
 import { CategoryTabs } from "@/components/CategoryTabs"
@@ -134,15 +134,18 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
 
         {!products || products.length === 0 ? (
           <div className="text-center py-24 bg-white rounded-[3.5rem] shadow-xl shadow-slate-200/50 border-4 border-slate-50 flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in-95 duration-500">
-            <div className="bg-rose-50 p-12 rounded-[3rem] mb-8 text-rose-500">
+            <div className="bg-slate-50 p-12 rounded-[3rem] mb-8 text-slate-300">
               <FilterX className="h-24 w-24" />
             </div>
-            <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tight mb-4">Фимозов, такого нет</h2>
+            <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tight mb-4">ТУТ ПУСТО, ДАЖЕ ТРАВОЛТА В ЗАМЕШАТЕЛЬСТВЕ</h2>
             <p className="text-slate-500 text-xl font-medium max-w-md mb-10">
-              Попробуй другой поиск или сбрось фильтры, чтобы найти что-то реальное.
+              Попробуй сбросить фильтры или поискать что-то менее экзотическое.
             </p>
-            <Button asChild className="h-20 px-12 rounded-3xl font-black text-xl bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 transition-all">
-              <Link href="/catalog">СБРОСИТЬ ВСЁ</Link>
+            <Button asChild className="h-24 px-16 rounded-[2rem] font-black text-2xl bg-primary text-white shadow-2xl shadow-primary/30 hover:scale-105 active:scale-[0.98] transition-all group">
+              <Link href="/catalog" className="flex items-center gap-4">
+                СБРОСИТЬ ВСЁ
+                <X className="h-8 w-8 group-hover:rotate-90 transition-transform duration-300" />
+              </Link>
             </Button>
           </div>
         ) : (
@@ -254,19 +257,8 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
             )}
           </div>
         )}
-      </main>
-
-      <footer className="mt-32 py-20 bg-slate-900 text-center relative overflow-hidden rounded-t-[4rem]">
-        <div className="max-w-4xl mx-auto px-4 relative z-10">
-          <h2 className="text-3xl font-black text-white mb-6 uppercase tracking-widest">ОЛТУОЛ — ВАШ НАДЕЖНЫЙ ПАРТНЕР</h2>
-          <div className="w-24 h-2 bg-primary mx-auto rounded-full mb-8" />
-          <p className="text-slate-400 text-lg font-medium">
-            Лучшее качество на рынке ветеринарных изделий. <br />
-            Работаем для вас и ваших пациентов.
-          </p>
-        </div>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] bg-primary/5 rounded-full blur-[120px] -z-0" />
-      </footer>
-    </div>
-  )
-}
+            </main>
+          </div>
+        )
+      }
+      

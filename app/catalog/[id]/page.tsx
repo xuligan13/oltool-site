@@ -55,7 +55,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     .then()
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20">
+    <div className="bg-[#F8FAFC] pb-20">
       {/* Navigation / Breadcrumbs */}
       <nav className="bg-white border-b sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-2 overflow-x-auto no-scrollbar">

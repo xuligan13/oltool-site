@@ -1,15 +1,30 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Toaster } from "@/components/ui/sonner"
 import { CartTrigger } from "@/components/cart/CartTrigger"
+import { Footer } from "@/components/footer"
+import { NetworkStatus } from "@/components/NetworkStatus"
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
+
+export const viewport: Viewport = {
+  themeColor: '#FDFBF7', // Matches our cream background
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
 
 export const metadata: Metadata = {
   title: 'ОЛТУОЛ — Ветеринарные защитные воротники оптом',
   description: 'Прямые поставки профессиональных ветеринарных защитных воротников для клиник по всей Беларуси. Оптовые цены, быстрая доставка.',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'ОЛТУОЛ',
+  },
   icons: {
     icon: [
       {
@@ -37,7 +52,13 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body className={`${inter.className} antialiased`}>
-        {children}
+        <NetworkStatus />
+        <div className="flex flex-col min-h-screen">
+          <main className="flex-grow">
+            {children}
+          </main>
+          <Footer />
+        </div>
         <CartTrigger />
         <Toaster richColors position="top-center" />
         <Analytics />

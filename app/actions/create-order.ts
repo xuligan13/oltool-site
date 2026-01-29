@@ -9,15 +9,43 @@ export async function createOrder(
   totalPrice: number
 ) {
   try {
+    // 🛡 VALIDATION: Protect against malicious data injections
+    if (!customerName || customerName.length < 2 || customerName.length > 100) {
+      throw new Error("Некорректное имя клиента")
+    }
+    
+    if (!customerPhone || customerPhone.length < 7) {
+      throw new Error("Некорректный номер телефона")
+    }
+
+    if (!items || items.length === 0) {
+      throw new Error("Корзина пуста")
+    }
+
+    // 🛡 NEGATIVE QUANTITY CHECK: Stop bypass attempts
+    const validatedItems = items.map(item => {
+      const sizes = { ...item.sizes }
+      Object.keys(sizes).forEach(size => {
+        if (sizes[size] <= 0) {
+          delete sizes[size]
+        }
+      })
+      if (Object.keys(sizes).length === 0) {
+        throw new Error(`Товар ${item.name} имеет нулевое количество`)
+      }
+      return { ...item, sizes }
+    })
+
     // 1. Save to Database
     const { data, error: dbError } = await supabase
       .from("orders")
       .insert([
         {
-          customer_name: customerName,
-          customer_phone: customerPhone,
+          customer_name: customerName.trim(),
+          customer_phone: customerPhone.trim(),
           total_price: totalPrice,
-          items: items,
+          items: validatedItems,
+          status: 'new'
         },
       ])
       .select()
@@ -25,7 +53,7 @@ export async function createOrder(
     if (dbError) throw dbError
 
     // 2. Prepare Telegram Message
-    const itemsList = items
+    const itemsList = validatedItems
       .map((item) => {
         const sizes = Object.entries(item.sizes)
           .map(([size, qty]) => `${size}: ${qty}шт`)
@@ -63,8 +91,8 @@ ${itemsList}`
     }
 
     return { success: true }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating order:", error)
-    return { success: false, error: "Не удалось оформить заказ" }
+    return { success: false, error: error.message || "Не удалось оформить заказ" }
   }
 }

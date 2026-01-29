@@ -63,11 +63,16 @@ import {
   BarChart3,
   Search as SearchIcon,
   Eye,
-  AlertCircle
+  AlertCircle,
+  LayoutDashboard,
+  Box,
+  Settings
 } from "lucide-react"
 import { toast } from "sonner"
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
 
 interface Product {
   id: number
@@ -102,6 +107,7 @@ interface UserLog {
 }
 
 export default function AdminPage() {
+  const pathname = usePathname()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isAuth, setIsAuth] = useState(false)
@@ -130,23 +136,7 @@ export default function AdminPage() {
   const avgOrderValue = completedOrdersCount > 0 ? totalRevenue / completedOrdersCount : 0
   const totalProductsCount = products.length
 
-  // 🛡 UNIQUE STATS LOGIC
   const viewLogs = userLogs.filter(log => log.event_type === "view")
-  
-  // Подсчет уникальных сессий на каждый товар
-  const uniqueViewsMap: Record<number, number> = {}
-  viewLogs.forEach(log => {
-    const pid = Number(log.payload?.product_id)
-    const sid = log.session_id
-    if (!pid || !sid) return
-    
-    // Используем Set или просто проверяем существование в рамках этого расчета
-    const key = `${pid}_${sid}`
-    if (!uniqueViewsMap[pid]) uniqueViewsMap[pid] = 0
-    // В реальной жизни лучше делать это на сервере, но для MVP считаем в памяти
-  })
-
-  // Более простая агрегация: считаем сколько уникальных session_id видели продукт
   const getUniqueViews = (pid: number) => {
     const sessions = new Set(viewLogs.filter(l => Number(l.payload?.product_id) === pid).map(l => l.session_id))
     return sessions.size
@@ -159,7 +149,6 @@ export default function AdminPage() {
     .map(log => ({ query: log.payload?.query, session: log.session_id }))
     .filter(l => l.query)
   
-  // Уникальные поисковые запросы (один запрос от одной сессии считается один раз)
   const uniqueSearches = Array.from(new Set(searchQueries.map(s => `${s.query.toLowerCase()}_${s.session}`)))
     .map(s => s.split('_')[0])
 
@@ -169,7 +158,6 @@ export default function AdminPage() {
         return acc
       }, {})).sort((a: any, b: any) => b[1] - a[1])[0][0]
     : "Нет данных"
-  // -------------------------
 
   useEffect(() => {
     const checkSession = async () => {
@@ -427,7 +415,7 @@ export default function AdminPage() {
                   type="email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-14 text-xl border-2 rounded-2xl focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                  className="h-14 text-base md:text-xl border-2 rounded-2xl focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
                   placeholder="admin@oltunol.by"
                   required
                 />
@@ -439,7 +427,7 @@ export default function AdminPage() {
                   type="password" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-14 text-xl border-2 rounded-2xl focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                  className="h-14 text-base md:text-xl border-2 rounded-2xl focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
                   placeholder="••••••••"
                   required
                 />
@@ -460,18 +448,18 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 lg:p-12 pb-24">
-      <div className="max-w-7xl mx-auto space-y-10">
+    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 lg:p-12 pb-32 md:pb-24">
+      <div className="max-w-7xl mx-auto space-y-8 md:space-y-10">
         
         {/* CRITICAL: Error Display */}
         {fetchError && (
           <div className="bg-destructive/10 border-2 border-destructive/20 p-6 rounded-3xl flex items-center gap-4 text-destructive animate-pulse">
-            <AlertCircle className="h-8 w-8" />
-            <div className="flex-grow">
-              <h4 className="font-black uppercase tracking-widest text-sm">Ошибка базы данных</h4>
-              <p className="font-bold text-lg">{fetchError}</p>
+            <AlertCircle className="h-8 w-8 shrink-0" />
+            <div className="flex-grow min-w-0">
+              <h4 className="font-black uppercase tracking-widest text-sm truncate">Ошибка базы данных</h4>
+              <p className="font-bold text-base md:text-lg truncate">{fetchError}</p>
             </div>
-            <Button onClick={fetchData} variant="outline" className="border-destructive/30 hover:bg-destructive hover:text-white transition-all rounded-2xl font-black">
+            <Button onClick={fetchData} variant="outline" size="sm" className="border-destructive/30 hover:bg-destructive hover:text-white transition-all rounded-xl font-black shrink-0">
               ПОВТОРИТЬ
             </Button>
           </div>
@@ -480,27 +468,22 @@ export default function AdminPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-1">
-            <h1 className="text-5xl font-black tracking-tighter text-slate-900">DASHBOARD</h1>
-            <p className="text-slate-500 text-xl font-medium">Аналитика и управление бизнесом</p>
+            <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-slate-900 leading-none">DASHBOARD</h1>
+            <p className="text-slate-500 text-lg md:text-xl font-medium">Управление бизнесом</p>
           </div>
-          <div className="flex flex-wrap gap-4">
-            <Button asChild variant="outline" size="lg" className="h-14 px-8 rounded-2xl font-black text-lg border-2 border-primary/20 text-primary hover:bg-primary/5 transition-all">
-              <Link href="/admin/orders" className="flex items-center gap-2">
-                <ShoppingBag className="h-5 w-5" /> ЗАКАЗЫ
-              </Link>
-            </Button>
+          <div className="flex flex-wrap gap-3">
             <Button 
               type="button"
-              className="bg-green-600 hover:bg-green-700 h-14 px-8 rounded-2xl font-black text-lg shadow-sm hover:shadow-md transition-all"
+              className="flex-grow md:flex-grow-0 bg-green-600 hover:bg-green-700 h-14 px-6 md:px-8 rounded-2xl font-black text-base md:text-lg shadow-sm hover:shadow-md transition-all"
               onClick={handleAddNew}
             >
-              <Plus className="mr-2 h-6 w-6" /> ДОБАВИТЬ ТОВАР
+              <Plus className="mr-2 h-5 w-5 md:h-6 md:w-6" /> ДОБАВИТЬ ТОВАР
             </Button>
             <Button 
               type="button"
               variant="ghost" 
               size="lg" 
-              className="text-slate-400 hover:text-destructive font-bold text-lg h-14 px-8 rounded-2xl border-2 border-transparent hover:border-destructive/10 transition-all"
+              className="text-slate-400 hover:text-destructive font-bold text-base md:text-lg h-14 px-6 rounded-2xl border-2 border-transparent hover:border-destructive/10 transition-all"
               onClick={handleLogout}
             >
               <LogOut className="mr-2 h-5 w-5" /> Выйти
@@ -508,81 +491,80 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* 📊 Analytics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="border-none shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-white group transition-all duration-300">
-            <CardContent className="p-8 flex items-center gap-6">
-              <div className="bg-green-100 text-green-600 p-5 rounded-2xl group-hover:bg-green-600 group-hover:text-white transition-colors">
-                <DollarSign className="h-10 w-10" />
+        {/* 📊 Analytics Cards - 2x2 on Mobile */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <Card className="border-none shadow-sm hover:shadow-md rounded-[2rem] overflow-hidden bg-white group transition-all duration-300">
+            <CardContent className="p-4 md:p-8 flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-6">
+              <div className="bg-green-100 text-green-600 p-3 md:p-5 rounded-2xl group-hover:bg-green-600 group-hover:text-white transition-colors">
+                <DollarSign className="h-6 w-6 md:h-10 md:w-10" />
               </div>
-              <div>
-                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Выручка</p>
-                <h3 className="text-3xl font-black text-slate-900 leading-none mt-1">{totalRevenue.toFixed(2)} <small className="text-sm font-bold text-slate-400">BYN</small></h3>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-white group transition-all duration-300">
-            <CardContent className="p-8 flex items-center gap-6">
-              <div className="bg-blue-100 text-blue-600 p-5 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                <ShoppingBag className="h-10 w-10" />
-              </div>
-              <div>
-                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Заказов</p>
-                <h3 className="text-3xl font-black text-slate-900 leading-none mt-1">{totalOrdersCount}</h3>
+              <div className="min-w-0">
+                <p className="text-slate-500 font-bold text-[10px] md:text-xs uppercase tracking-widest truncate">Выручка</p>
+                <h3 className="text-xl md:text-3xl font-black text-slate-900 leading-none mt-1 truncate">{totalRevenue.toFixed(0)} <small className="text-[10px] font-bold text-slate-400">BYN</small></h3>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-white group transition-all duration-300">
-            <CardContent className="p-8 flex items-center gap-6">
-              <div className="bg-purple-100 text-purple-600 p-5 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                <TrendingUp className="h-10 w-10" />
+          <Card className="border-none shadow-sm hover:shadow-md rounded-[2rem] overflow-hidden bg-white group transition-all duration-300">
+            <CardContent className="p-4 md:p-8 flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-6">
+              <div className="bg-blue-100 text-blue-600 p-3 md:p-5 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                <ShoppingBag className="h-6 w-6 md:h-10 md:w-10" />
               </div>
-              <div>
-                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Средний чек</p>
-                <h3 className="text-3xl font-black text-slate-900 leading-none mt-1">{avgOrderValue.toFixed(2)} <small className="text-sm font-bold text-slate-400">BYN</small></h3>
+              <div className="min-w-0">
+                <p className="text-slate-500 font-bold text-[10px] md:text-xs uppercase tracking-widest truncate">Заказов</p>
+                <h3 className="text-xl md:text-3xl font-black text-slate-900 leading-none mt-1 truncate">{totalOrdersCount}</h3>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-white group transition-all duration-300">
-            <CardContent className="p-8 flex items-center gap-6">
-              <div className="bg-orange-100 text-orange-600 p-5 rounded-2xl group-hover:bg-orange-600 group-hover:text-white transition-colors">
-                <Package className="h-10 w-10" />
+          <Card className="border-none shadow-sm hover:shadow-md rounded-[2rem] overflow-hidden bg-white group transition-all duration-300">
+            <CardContent className="p-4 md:p-8 flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-6">
+              <div className="bg-purple-100 text-purple-600 p-3 md:p-5 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                <TrendingUp className="h-6 w-6 md:h-10 md:w-10" />
               </div>
-              <div>
-                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Товаров</p>
-                <h3 className="text-3xl font-black text-slate-900 leading-none mt-1">{totalProductsCount}</h3>
+              <div className="min-w-0">
+                <p className="text-slate-500 font-bold text-[10px] md:text-xs uppercase tracking-widest truncate">Средний</p>
+                <h3 className="text-xl md:text-3xl font-black text-slate-900 leading-none mt-1 truncate">{avgOrderValue.toFixed(0)} <small className="text-[10px] font-bold text-slate-400">BYN</small></h3>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm hover:shadow-md rounded-[2rem] overflow-hidden bg-white group transition-all duration-300">
+            <CardContent className="p-4 md:p-8 flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-6">
+              <div className="bg-orange-100 text-orange-600 p-3 md:p-5 rounded-2xl group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                <Package className="h-6 w-6 md:h-10 md:w-10" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-slate-500 font-bold text-[10px] md:text-xs uppercase tracking-widest truncate">Товаров</p>
+                <h3 className="text-xl md:text-3xl font-black text-slate-900 leading-none mt-1 truncate">{totalProductsCount}</h3>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* 🕵️‍♂️ "1984" Surveillance Cards - UNIQUE VIEWS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="border-none shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-white group transition-all duration-300">
-            <CardContent className="p-8 flex items-center gap-6">
-              <div className="bg-slate-100 text-slate-600 p-5 rounded-2xl group-hover:bg-slate-900 group-hover:text-white transition-colors">
-                <SearchIcon className="h-10 w-10" />
+        {/* 🕵️‍♂️ Surveillance Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          <Card className="border-none shadow-sm hover:shadow-md rounded-[2rem] overflow-hidden bg-white group transition-all duration-300">
+            <CardContent className="p-6 md:p-8 flex items-center gap-4 md:gap-6">
+              <div className="bg-slate-100 text-slate-600 p-4 md:p-5 rounded-2xl group-hover:bg-slate-900 group-hover:text-white transition-colors">
+                <SearchIcon className="h-8 w-8 md:h-10 md:w-10" />
               </div>
               <div className="min-w-0">
-                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Топ поиска (уник.)</p>
-                <h3 className="text-2xl font-black text-slate-900 leading-tight mt-1 truncate">«{topSearch}»</h3>
+                <p className="text-slate-500 font-bold text-[10px] md:text-xs uppercase tracking-widest">Топ поиска</p>
+                <h3 className="text-lg md:text-2xl font-black text-slate-900 leading-tight mt-1 truncate">«{topSearch}»</h3>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-white group transition-all duration-300">
-            <CardContent className="p-8 flex items-center gap-6">
-              <div className="bg-rose-100 text-rose-600 p-5 rounded-2xl group-hover:bg-rose-600 group-hover:text-white transition-colors">
-                <Eye className="h-10 w-10" />
+          <Card className="border-none shadow-sm hover:shadow-md rounded-[2rem] overflow-hidden bg-white group transition-all duration-300">
+            <CardContent className="p-6 md:p-8 flex items-center gap-4 md:gap-6">
+              <div className="bg-rose-100 text-rose-600 p-4 md:p-5 rounded-2xl group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                <Eye className="h-8 w-8 md:h-10 md:w-10" />
               </div>
               <div className="min-w-0">
-                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Лидер внимания (уник.)</p>
-                <h3 className="text-2xl font-black text-slate-900 leading-tight mt-1 truncate">
-                  {mostPopularProduct?.name || "Нет данных"} 
-                  {mostPopularProduct && <small className="text-sm font-bold text-slate-400 ml-2">({getUniqueViews(mostPopularProduct.id)} чел.)</small>}
+                <p className="text-slate-500 font-bold text-[10px] md:text-xs uppercase tracking-widest">Лидер внимания</p>
+                <h3 className="text-lg md:text-2xl font-black text-slate-900 leading-tight mt-1 truncate">
+                  {mostPopularProduct?.name || "Нет данных"}
                 </h3>
               </div>
             </CardContent>
@@ -590,276 +572,172 @@ export default function AdminPage() {
         </div>
 
         {/* 📈 List Container */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          <Card className="lg:col-span-3 border-none shadow-sm rounded-3xl overflow-hidden bg-white transition-all">
-            <CardHeader className="p-8 border-b border-slate-50 flex flex-row items-center justify-between">
-              <CardTitle className="text-2xl font-black text-slate-800 flex items-center gap-3">
-                <div className="w-2 h-8 bg-primary rounded-full" />
-                СПИСОК ТОВАРОВ
-              </CardTitle>
-              <div className="bg-slate-50 px-4 py-2 rounded-xl text-sm font-bold text-slate-400 flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" /> Аналитика за все время
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-none">
-                      <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest">Товар</TableHead>
-                      <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest text-center">Просмотры (Уник.)</TableHead>
-                      <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest">Опт. цена</TableHead>
-                      <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest">Розница</TableHead>
-                      <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest text-center">Статус</TableHead>
-                      <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest text-right">Действие</TableHead>
+        <Card className="border-none shadow-sm rounded-[2rem] overflow-hidden bg-white transition-all">
+          <CardHeader className="p-6 md:p-8 border-b border-slate-50 flex flex-row items-center justify-between">
+            <CardTitle className="text-xl md:text-2xl font-black text-slate-800 flex items-center gap-3">
+              <div className="w-2 h-6 md:h-8 bg-primary rounded-full" />
+              СПИСОК ТОВАРОВ
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-none">
+                    <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest">Товар</TableHead>
+                    <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest text-center">Просмотры</TableHead>
+                    <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest">Опт. цена</TableHead>
+                    <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest">Розница</TableHead>
+                    <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest text-center">Статус</TableHead>
+                    <TableHead className="py-6 px-8 font-black text-slate-400 text-sm uppercase tracking-widest text-right">Действие</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={6} className="h-64 text-center"><Loader2 className="h-12 w-12 animate-spin mx-auto text-primary opacity-20" /></TableCell></TableRow>
+                  ) : products.map((product) => (
+                    <TableRow key={product.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-50 group">
+                      <TableCell className="py-6 px-8">
+                        <div className="flex items-center gap-5">
+                          <div className="w-16 h-16 rounded-2xl bg-slate-100 flex-shrink-0 relative overflow-hidden border-2 border-slate-50">
+                            {product.image_url ? <Image src={product.image_url} alt={product.name} fill className="object-cover" /> : <ImageIcon className="m-auto h-8 w-8 text-slate-300" />}
+                          </div>
+                          <span className="font-black text-xl text-slate-800 group-hover:text-primary transition-colors">{product.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-6 px-8 text-center">
+                        <div className="flex items-center justify-center gap-2"><Eye className="h-4 w-4 text-slate-300" /><span className="font-black text-slate-900">{getUniqueViews(product.id)}</span></div>
+                      </TableCell>
+                      <TableCell className="py-6 px-8"><span className="font-bold text-xl text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">{product.wholesale_price}</span></TableCell>
+                      <TableCell className="py-6 px-8"><span className="font-black text-xl text-slate-900">{product.retail_price}</span></TableCell>
+                      <TableCell className="py-6 px-8 text-center">
+                        <div className="flex flex-col gap-1 items-center">
+                          {(product.is_hit || product.is_bestseller) && <Badge className="bg-orange-500 text-white border-none px-3 py-0.5 text-[10px] font-black rounded-full uppercase">ХИТ</Badge>}
+                          {product.is_new && <Badge className="bg-green-500 text-white border-none px-3 py-0.5 text-[10px] font-black rounded-full uppercase">NEW</Badge>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-6 px-8 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="default" size="lg" className="h-14 px-8 rounded-2xl font-black text-lg shadow-sm" onClick={() => handleEdit(product)}>ИЗМЕНИТЬ</Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild><Button variant="destructive" size="icon" className="h-14 w-14 rounded-2xl shadow-sm"><Trash2 className="h-6 w-6" /></Button></AlertDialogTrigger>
+                            <AlertDialogContent className="rounded-3xl border-none shadow-lg">
+                              <AlertDialogHeader><AlertDialogTitle className="text-2xl font-black text-slate-900">Вы уверены?</AlertDialogTitle></AlertDialogHeader>
+                              <AlertDialogFooter className="gap-2 pt-4">
+                                <AlertDialogCancel className="h-14 rounded-2xl font-bold border-2">Отмена</AlertDialogCancel>
+                                <AlertDialogAction className="h-14 rounded-2xl font-black bg-destructive text-white hover:bg-destructive/90" onClick={() => handleDelete(product.id)}>УДАЛИТЬ</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="h-64 text-center">
-                          <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary opacity-20" />
-                          <p className="mt-4 text-slate-400 font-bold uppercase tracking-widest">Загружаем базу...</p>
-                        </TableCell>
-                      </TableRow>
-                    ) : products.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="h-64 text-center">
-                          <p className="text-slate-400 font-bold text-xl uppercase tracking-widest">Товары не найдены</p>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      products.map((product) => (
-                        <TableRow key={product.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-50 group">
-                          <TableCell className="py-6 px-8">
-                            <div className="flex items-center gap-5">
-                              <div className="w-16 h-16 rounded-2xl bg-slate-100 flex-shrink-0 relative overflow-hidden border-2 border-slate-50">
-                                {product.image_url ? (
-                                  <Image src={product.image_url} alt={product.name} fill className="object-cover" />
-                                ) : (
-                                  <ImageIcon className="m-auto h-8 w-8 text-slate-300" />
-                                )}
-                              </div>
-                              <span className="font-black text-xl text-slate-800 group-hover:text-primary transition-colors">{product.name}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-6 px-8 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <Eye className="h-4 w-4 text-slate-300" />
-                              <span className="font-black text-slate-900">{getUniqueViews(product.id)}</span>
-                              <small className="text-[10px] text-slate-400 font-bold ml-1">/ {product.views_count || 0}</small>
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-6 px-8">
-                            <span className="font-bold text-xl text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">{product.wholesale_price} <small className="text-xs ml-0.5">BYN</small></span>
-                          </TableCell>
-                          <TableCell className="py-6 px-8">
-                            <span className="font-black text-xl text-slate-900">{product.retail_price} <small className="text-xs ml-0.5">BYN</small></span>
-                          </TableCell>
-                          <TableCell className="py-6 px-8 text-center">
-                            <div className="flex flex-col gap-1 items-center">
-                              {(product.is_hit || product.is_bestseller) && (
-                                <Badge className="bg-orange-500 text-white border-none px-3 py-0.5 text-[10px] font-black rounded-full uppercase shadow-sm">ХИТ</Badge>
-                              )}
-                              {product.is_new && (
-                                <Badge className="bg-green-500 text-white border-none px-3 py-0.5 text-[10px] font-black rounded-full uppercase shadow-sm">NEW</Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-6 px-8 text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button 
-                                type="button"
-                                variant="default" 
-                                size="lg"
-                                className="h-14 px-8 rounded-2xl font-black text-lg shadow-sm hover:shadow-md transition-all"
-                                onClick={() => handleEdit(product)}
-                              >
-                                ИЗМЕНИТЬ
-                              </Button>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button type="button" variant="destructive" size="icon" className="h-14 w-14 rounded-2xl shadow-sm hover:shadow-md transition-all">
-                                    <Trash2 className="h-6 w-6" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="rounded-3xl border-none shadow-lg">
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle className="text-2xl font-black text-slate-900">Вы уверены?</AlertDialogTitle>
-                                    <AlertDialogDescription className="text-lg text-slate-500">
-                                      Товар "{product.name}" будет навсегда удален.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter className="gap-2 pt-4">
-                                    <AlertDialogCancel className="h-14 rounded-2xl font-bold border-2">Отмена</AlertDialogCancel>
-                                    <AlertDialogAction 
-                                      className="h-14 rounded-2xl font-black bg-destructive text-white hover:bg-destructive/90 transition-all"
-                                      onClick={() => handleDelete(product.id)}
-                                    >
-                                      УДАЛИТЬ
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            {/* Mobile Card List */}
+            <div className="md:hidden divide-y divide-slate-50">
+              {isLoading ? (
+                <div className="p-12 text-center"><Loader2 className="h-10 w-10 animate-spin mx-auto text-primary opacity-20" /></div>
+              ) : products.map((product) => (
+                <div key={product.id} className="p-6 space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-50 relative overflow-hidden border-2 border-slate-100 flex-shrink-0">
+                      {product.image_url ? <Image src={product.image_url} alt={product.name} fill className="object-cover" /> : <ImageIcon className="m-auto h-6 w-6 text-slate-200" />}
+                    </div>
+                    <div className="min-w-0 flex-grow">
+                      <h4 className="font-black text-slate-900 truncate uppercase tracking-tighter">{product.name}</h4>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-primary font-black text-lg">{product.retail_price} <small className="text-[8px] uppercase">BYN</small></span>
+                        <div className="flex items-center gap-1 text-slate-400 font-bold text-xs"><Eye className="h-3 w-3" /> {getUniqueViews(product.id)}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" className="flex-grow h-12 rounded-xl font-bold text-sm" onClick={() => handleEdit(product)}>ИЗМЕНИТЬ</Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="icon" className="h-12 w-12 rounded-xl"><Trash2 className="h-5 w-5" /></Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="rounded-3xl mx-4">
+                        <AlertDialogHeader><AlertDialogTitle>Удалить товар?</AlertDialogTitle></AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="h-12 rounded-xl">Отмена</AlertDialogCancel>
+                          <AlertDialogAction className="h-12 rounded-xl bg-destructive" onClick={() => handleDelete(product.id)}>УДАЛИТЬ</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
+      {/* 📱 Mobile Bottom Navigation */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-100 px-6 py-4 flex justify-between items-center z-[100] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        <Link href="/admin" className={cn("flex flex-col items-center gap-1 transition-all", pathname === "/admin" ? "text-primary scale-110" : "text-slate-400")}>
+          <LayoutDashboard className="h-6 w-6" />
+          <span className="text-[10px] font-black uppercase tracking-tighter">Главная</span>
+        </Link>
+        <Link href="/admin/orders" className={cn("flex flex-col items-center gap-1 transition-all", pathname === "/admin/orders" ? "text-primary scale-110" : "text-slate-400")}>
+          <div className="relative">
+            <ShoppingBag className="h-6 w-6" />
+            {orders.filter(o => o.status === 'new').length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-pulse border-2 border-white">{orders.filter(o => o.status === 'new').length}</span>
+            )}
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-tighter">Заказы</span>
+        </Link>
+        <button onClick={handleAddNew} className="flex flex-col items-center gap-1 text-slate-400">
+          <Plus className="h-6 w-6" />
+          <span className="text-[10px] font-black uppercase tracking-tighter">Добавить</span>
+        </button>
+        <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-slate-400">
+          <LogOut className="h-6 w-6" />
+          <span className="text-[10px] font-black uppercase tracking-tighter">Выход</span>
+        </button>
+      </div>
+
+      {/* Drawer */}
       <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <DrawerContent className="max-h-[96vh] rounded-t-3xl border-none shadow-lg">
           <div className="mx-auto w-full max-w-4xl overflow-y-auto px-6 pb-16">
             <div className="w-20 h-2 bg-slate-200 rounded-full mx-auto mt-6 mb-10" />
-            
-            <DrawerHeader className="px-0 py-0 mb-10 text-left">
-              <DrawerTitle className="text-4xl font-black text-slate-900 tracking-tighter">
-                {selectedProduct?.id === 0 ? "ДОБАВЛЕНИЕ ТОВАРА" : "РЕДАКТИРОВАНИЕ ТОВАРА"}
-              </DrawerTitle>
-            </DrawerHeader>
-            
+            <DrawerHeader className="px-0 py-0 mb-8 md:mb-10 text-left"><DrawerTitle className="text-2xl md:text-4xl font-black text-slate-900 tracking-tighter uppercase">{selectedProduct?.id === 0 ? "Добавление" : "Редактирование"}</DrawerTitle></DrawerHeader>
             {selectedProduct && (
-              <div className="space-y-10">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+              <div className="space-y-8 md:space-y-10">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 items-start">
                    <div className="space-y-3">
-                      <Label className="text-lg font-black text-slate-700 ml-1 uppercase tracking-wider">Фото товара</Label>
-                      <div 
-                        className="relative aspect-square rounded-3xl bg-slate-100 border-4 border-white shadow-sm overflow-hidden group cursor-pointer"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        {selectedProduct.image_url ? (
-                          <Image src={selectedProduct.image_url} alt="Preview" fill className="object-cover" />
-                        ) : (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
-                             <ImageIcon className="h-16 w-16 mb-2" />
-                             <span className="text-sm font-bold">НЕТ ФОТО</span>
-                          </div>
-                        )}
-                        {isUploading && (
-                          <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                          </div>
-                        )}
+                      <Label className="text-sm font-black text-slate-700 uppercase tracking-wider">Фото</Label>
+                      <div className="relative aspect-square rounded-3xl bg-slate-100 border-4 border-white shadow-sm overflow-hidden group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                        {selectedProduct.image_url ? <Image src={selectedProduct.image_url} alt="Preview" fill className="object-cover" /> : <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400"><ImageIcon className="h-12 w-12 mb-2" /><span className="text-[10px] font-bold">НЕТ ФОТО</span></div>}
+                        {isUploading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}
                       </div>
                       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
-                      <Button type="button" variant="outline" className="w-full h-14 rounded-2xl font-black transition-all" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                        {isUploading ? "ЗАГРУЗКА..." : "ВЫБРАТЬ ФОТО"}
-                      </Button>
                    </div>
-
                    <div className="md:col-span-2 space-y-6">
-                      <div className="space-y-3">
-                        <Label htmlFor="name" className="text-lg font-black text-slate-700 uppercase tracking-wider">Название</Label>
-                        <Input 
-                          id="name" 
-                          value={selectedProduct.name}
-                          onChange={(e) => setSelectedProduct({...selectedProduct, name: e.target.value})}
-                          className="h-16 text-2xl font-bold rounded-2xl border-2 transition-all focus-visible:ring-primary/10"
-                        />
-                      </div>
-
-                      <div className="space-y-3">
-                        <Label htmlFor="category" className="text-lg font-black text-slate-700 uppercase tracking-wider">Категория</Label>
-                        <Select 
-                          value={selectedProduct.category} 
-                          onValueChange={(val) => setSelectedProduct({...selectedProduct, category: val})}
-                        >
-                          <SelectTrigger className="h-16 text-xl font-bold rounded-2xl border-2 transition-all">
-                            <SelectValue placeholder="Выберите категорию" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-2xl border-2 shadow-lg">
-                            <SelectItem value="collars" className="text-lg font-bold py-3">Воротники</SelectItem>
-                            <SelectItem value="accessories" className="text-lg font-bold py-3">Аксессуары</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 rounded-2xl border-2 border-orange-50/50 bg-orange-50/30 flex items-center justify-between transition-all">
-                          <Label htmlFor="ishit" className="text-base font-black text-slate-900 cursor-pointer">ХИТ ПРОДАЖ</Label>
-                          <Switch 
-                            id="ishit" 
-                            checked={selectedProduct.is_hit || selectedProduct.is_bestseller}
-                            onCheckedChange={(checked) => setSelectedProduct({...selectedProduct, is_hit: checked, is_bestseller: checked})}
-                            className="data-[state=checked]:bg-orange-500"
-                          />
-                        </div>
-                        <div className="p-4 rounded-2xl border-2 border-green-50/50 bg-green-50/30 flex items-center justify-between transition-all">
-                          <Label htmlFor="isnew" className="text-base font-black text-slate-900 cursor-pointer">НОВИНКА</Label>
-                          <Switch 
-                            id="isnew" 
-                            checked={selectedProduct.is_new}
-                            onCheckedChange={(checked) => setSelectedProduct({...selectedProduct, is_new: checked})}
-                            className="data-[state=checked]:bg-green-500"
-                          />
-                        </div>
+                      <div className="space-y-2"><Label htmlFor="name" className="text-sm font-black text-slate-700 uppercase">Название</Label><Input id="name" value={selectedProduct.name} onChange={(e) => setSelectedProduct({...selectedProduct, name: e.target.value})} className="h-14 text-base font-bold rounded-xl border-2" /></div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-xl border-2 bg-orange-50/30 flex items-center justify-between"><Label htmlFor="ishit" className="text-[10px] font-black">ХИТ</Label><Switch id="ishit" checked={selectedProduct.is_hit || selectedProduct.is_bestseller} onCheckedChange={(checked) => setSelectedProduct({...selectedProduct, is_hit: checked, is_bestseller: checked})} /></div>
+                        <div className="p-3 rounded-xl border-2 bg-green-50/30 flex items-center justify-between"><Label htmlFor="isnew" className="text-[10px] font-black">NEW</Label><Switch id="isnew" checked={selectedProduct.is_new} onCheckedChange={(checked) => setSelectedProduct({...selectedProduct, is_new: checked})} /></div>
                       </div>
                    </div>
                 </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="description" className="text-lg font-black text-slate-700 uppercase tracking-wider">Описание</Label>
-                  <Textarea 
-                    id="description" 
-                    value={selectedProduct.description}
-                    onChange={(e) => setSelectedProduct({...selectedProduct, description: e.target.value})}
-                    className="min-h-[120px] text-xl font-medium rounded-2xl border-2 p-6 transition-all focus-visible:ring-primary/10"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-3"><Label className="text-lg font-black uppercase">Материал</Label><Input value={selectedProduct.material} onChange={(e) => setSelectedProduct({...selectedProduct, material: e.target.value})} className="h-14 text-xl rounded-2xl border-2 transition-all focus-visible:ring-primary/10" /></div>
-                  <div className="space-y-3"><Label className="text-lg font-black uppercase">Страна</Label><Input value={selectedProduct.country} onChange={(e) => setSelectedProduct({...selectedProduct, country: e.target.value})} className="h-14 text-xl rounded-2xl border-2 transition-all focus-visible:ring-primary/10" /></div>
-                  <div className="space-y-3"><Label className="text-lg font-black uppercase">Тип товара</Label><Input value={selectedProduct.product_type} onChange={(e) => setSelectedProduct({...selectedProduct, product_type: e.target.value})} className="h-14 text-xl rounded-2xl border-2 transition-all focus-visible:ring-primary/10" /></div>
-                  <div className="space-y-3"><Label className="text-lg font-black uppercase">Инфо о доставке</Label><Input value={selectedProduct.delivery_info} onChange={(e) => setSelectedProduct({...selectedProduct, delivery_info: e.target.value})} className="h-14 text-xl rounded-2xl border-2 transition-all focus-visible:ring-primary/10" /></div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <Label htmlFor="wholesale" className="text-lg font-black text-slate-700 uppercase">Оптовая цена</Label>
-                    <div className="relative">
-                      <Input id="wholesale" value={selectedProduct.wholesale_price} onChange={(e) => setSelectedProduct({...selectedProduct, wholesale_price: e.target.value})} className="h-16 text-2xl font-black rounded-2xl border-2 pr-20 transition-all focus-visible:ring-primary/10" />
-                      <div className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">BYN</div>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <Label htmlFor="retail" className="text-lg font-black text-slate-700 uppercase">Розничная цена</Label>
-                    <div className="relative">
-                      <Input id="retail" value={selectedProduct.retail_price} onChange={(e) => setSelectedProduct({...selectedProduct, retail_price: e.target.value})} className="h-16 text-2xl font-black rounded-2xl border-2 pr-20 transition-all focus-visible:ring-primary/10" />
-                      <div className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">BYN</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <Label className="text-lg font-black text-slate-700 uppercase">Доступные размеры</Label>
-                  <div className="flex flex-wrap gap-3 mb-4 p-2">
-                    {selectedProduct.sizes.map((size) => (
-                      <Badge key={size} className="h-14 px-6 text-xl bg-white text-slate-900 border-2 shadow-sm rounded-2xl font-bold transition-all" variant="outline">
-                        {size}
-                        <button type="button" className="ml-2 hover:text-destructive transition-colors" onClick={() => toggleSize(size)}><X className="h-6 w-6 text-slate-300" /></button>
-                      </Badge>
-                    ))}
-                  </div>
-                  <Input placeholder="Добавить размер..." className="h-16 text-xl rounded-2xl border-2 border-dashed transition-all focus-visible:ring-primary/10" onKeyDown={addSize} />
+                <div className="space-y-2"><Label htmlFor="description" className="text-sm font-black text-slate-700 uppercase">Описание</Label><Textarea id="description" value={selectedProduct.description} onChange={(e) => setSelectedProduct({...selectedProduct, description: e.target.value})} className="min-h-[100px] text-base font-medium rounded-xl border-2 p-4" /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label className="text-xs font-black uppercase">Опт (BYN)</Label><Input value={selectedProduct.wholesale_price} onChange={(e) => setSelectedProduct({...selectedProduct, wholesale_price: e.target.value})} className="h-14 text-base font-black rounded-xl border-2" /></div>
+                  <div className="space-y-2"><Label className="text-xs font-black uppercase">Розница (BYN)</Label><Input value={selectedProduct.retail_price} onChange={(e) => setSelectedProduct({...selectedProduct, retail_price: e.target.value})} className="h-14 text-base font-black rounded-xl border-2" /></div>
                 </div>
               </div>
             )}
-
-            <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Button onClick={handleSave} disabled={isSaving || isUploading} className="h-20 text-2xl font-black rounded-3xl shadow-sm hover:shadow-md transition-all active:scale-[0.98] bg-primary text-white">
-                {isSaving ? <Loader2 className="mr-3 h-8 w-8 animate-spin" /> : <Save className="mr-3 h-8 w-8" />}
-                {selectedProduct?.id === 0 ? "СОЗДАТЬ ТОВАР" : "СОХРАНИТЬ ДАННЫЕ"}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setIsDrawerOpen(false)} className="h-20 text-xl font-bold border-2 rounded-3xl text-slate-400 hover:bg-slate-50 transition-all">ОТМЕНИТЬ</Button>
+            <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button onClick={handleSave} disabled={isSaving || isUploading} className="h-16 text-lg font-black rounded-2xl bg-primary text-white">{isSaving ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Save className="mr-2 h-6 w-6" />}СОХРАНИТЬ</Button>
+              <Button type="button" variant="outline" onClick={() => setIsDrawerOpen(false)} className="h-16 text-lg font-bold border-2 rounded-2xl text-slate-400">ОТМЕНА</Button>
             </div>
           </div>
         </DrawerContent>

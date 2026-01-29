@@ -104,8 +104,12 @@ export default async function Home() {
         </section>
       )}
 
-      <WorkflowSection />
-      <Footer />
-    </main>
-  )
-}
+            <WorkflowSection />
+
+          </main>
+
+        )
+
+      }
+
+      
