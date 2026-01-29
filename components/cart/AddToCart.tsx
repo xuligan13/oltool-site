@@ -78,7 +78,7 @@ export function AddToCart({ product }: AddToCartProps) {
           В ЗАКАЗ
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md rounded-[2rem]">
+      <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-lg">
         <DialogHeader>
           <DialogTitle className="text-2xl font-black text-slate-900 uppercase tracking-tighter">
             Выберите количество
@@ -87,14 +87,14 @@ export function AddToCart({ product }: AddToCartProps) {
         
         <div className="space-y-6 py-4">
           {product.sizes.map((size) => (
-            <div key={size} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+            <div key={size} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100/50 shadow-sm">
               <span className="text-xl font-black text-slate-700">{size}</span>
               <div className="flex items-center gap-4">
                 <Button 
                   type="button"
                   variant="outline" 
                   size="icon" 
-                  className="h-10 w-10 rounded-xl border-2"
+                  className="h-10 w-10 rounded-xl border-2 transition-all hover:bg-white"
                   onClick={() => updateQty(size, -1)}
                 >
                   <Minus className="h-4 w-4" />
@@ -104,13 +104,13 @@ export function AddToCart({ product }: AddToCartProps) {
                   min="0"
                   value={selectedSizes[size] || 0}
                   onChange={(e) => handleInputChange(size, e.target.value)}
-                  className="w-16 h-10 text-center font-black rounded-xl border-2"
+                  className="w-16 h-10 text-center font-black rounded-xl border-2 transition-all focus-visible:ring-primary/10"
                 />
                 <Button 
                   type="button"
                   variant="outline" 
                   size="icon" 
-                  className="h-10 w-10 rounded-xl border-2"
+                  className="h-10 w-10 rounded-xl border-2 transition-all hover:bg-white"
                   onClick={() => updateQty(size, 1)}
                 >
                   <Plus className="h-4 w-4" />
@@ -123,7 +123,7 @@ export function AddToCart({ product }: AddToCartProps) {
         <DialogFooter>
           <Button 
             onClick={handleAddToCart}
-            className="w-full h-16 rounded-2xl font-black text-xl shadow-xl bg-primary text-white"
+            className="w-full h-16 rounded-2xl font-black text-xl shadow-sm hover:shadow-md transition-all bg-primary text-white"
           >
             ПОДТВЕРДИТЬ
           </Button>

@@ -5,7 +5,7 @@ import { notFound } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { AddToCart } from "@/components/cart/AddToCart"
 import { Badge } from "@/components/ui/badge"
-import { ChevronRight, Home, Package, ShieldCheck, Factory, Truck } from "lucide-react"
+import { ChevronRight, Home, Package, ShieldCheck, Factory, Truck, Flame } from "lucide-react"
 
 interface ProductPageProps {
   params: Promise<{ id: string }>
@@ -63,14 +63,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
           
           {/* Left Column: Image Area */}
           <div className="space-y-6">
-            <div className="bg-white rounded-[3rem] p-12 flex items-center justify-center border-2 border-slate-50 aspect-square relative shadow-2xl shadow-slate-200/50 group overflow-hidden">
+            <div className="bg-white rounded-3xl p-12 flex items-center justify-center border-2 border-slate-50 aspect-square relative shadow-sm group overflow-hidden">
               {product.image_url ? (
                 <Image
                   src={product.image_url}
                   alt={product.name}
                   fill
                   priority
-                  className="object-contain p-8 transition-transform duration-700 group-hover:scale-110"
+                  className="object-contain p-8 transition-transform duration-700 group-hover:scale-105"
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center text-slate-200">
@@ -79,9 +79,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 </div>
               )}
               
-              {product.is_bestseller && (
+              {(product.is_bestseller || product.is_hit) && (
                 <div className="absolute top-8 left-8">
-                  <Badge className="bg-orange-500 text-white border-none px-6 py-2 text-sm font-black rounded-full shadow-xl uppercase tracking-wider">
+                  <Badge className="bg-orange-500 text-white border-none px-6 py-2 text-sm font-black rounded-full shadow-sm uppercase tracking-wider flex items-center gap-2">
+                    <Flame className="h-4 w-4 fill-current" />
                     ХИТ ПРОДАЖ
                   </Badge>
                 </div>
@@ -91,15 +92,31 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
           {/* Right Column: Info Area */}
           <div className="space-y-10">
-            <div className="space-y-4">
+            <div className="space-y-6">
               <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter leading-[0.9]">
                 {product.name}
               </h1>
-              <div className="flex items-baseline gap-3">
-                <span className="text-5xl font-black text-primary tracking-tighter">
-                  {product.retail_price}
-                </span>
-                <span className="text-slate-400 font-black text-xl uppercase">BYN</span>
+              
+              <div className="flex flex-col gap-2">
+                <div className="flex items-baseline gap-3">
+                  <span className="text-5xl font-black text-slate-900 tracking-tighter">
+                    {product.retail_price}
+                  </span>
+                  <span className="text-slate-400 font-black text-xl uppercase">BYN</span>
+                  <Badge variant="outline" className="ml-2 border-2 border-slate-100 text-slate-400 font-bold px-3 py-1 rounded-xl">РОЗНИЦА</Badge>
+                </div>
+                
+                {product.wholesale_price && (
+                  <div className="flex items-center gap-3">
+                    <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10 flex items-center gap-3">
+                      <span className="text-2xl font-black text-primary tracking-tighter">
+                        Опт: {product.wholesale_price}
+                      </span>
+                      <span className="text-primary/40 font-black text-sm uppercase">BYN</span>
+                    </div>
+                    <span className="text-slate-400 text-sm font-bold uppercase tracking-wider">При заказе от 10 шт.</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -114,7 +131,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
             {/* Specifications - Dynamically updated from DB */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm transition-shadow hover:shadow-md">
                 <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
                   <ShieldCheck className="h-6 w-6" />
                 </div>
@@ -123,7 +140,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   <p className="font-black text-slate-800">{product.material || "Полипропилен"}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm transition-shadow hover:shadow-md">
                 <div className="p-3 bg-green-50 text-green-600 rounded-xl">
                   <Factory className="h-6 w-6" />
                 </div>
@@ -132,7 +149,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   <p className="font-black text-slate-800">{product.country || "Беларусь"}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm transition-shadow hover:shadow-md">
                 <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
                   <Package className="h-6 w-6" />
                 </div>
@@ -141,7 +158,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   <p className="font-black text-slate-800">{product.product_type || "Защитный воротник"}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm transition-shadow hover:shadow-md">
                 <div className="p-3 bg-orange-50 text-orange-600 rounded-xl">
                   <Truck className="h-6 w-6" />
                 </div>
