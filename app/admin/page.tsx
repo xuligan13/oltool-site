@@ -56,10 +56,12 @@ import {
   ChevronRight,
   LogOut,
   Trash2,
-  Sparkles
+  Sparkles,
+  ShoppingBag
 } from "lucide-react"
 import { toast } from "sonner"
 import Image from "next/image"
+import Link from "next/link"
 
 interface Product {
   id: number
@@ -371,6 +373,12 @@ export default function AdminPage() {
             <p className="text-slate-500 text-xl font-medium">Ветеринарные воротники ОЛТУОЛ</p>
           </div>
           <div className="flex gap-4">
+            <Button asChild variant="outline" size="lg" className="h-14 px-8 rounded-2xl font-black text-lg border-2 border-primary/20 text-primary hover:bg-primary/5 transition-all">
+              <Link href="/admin/orders" className="flex items-center gap-2">
+                <ShoppingBag className="h-5 w-5" /> ЗАКАЗЫ
+              </Link>
+            </Button>
+            {/* FEATURE: Add Product Button */}
             <Button 
               type="button"
               className="bg-green-600 hover:bg-green-700 h-14 px-8 rounded-2xl font-black text-lg shadow-xl shadow-green-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
